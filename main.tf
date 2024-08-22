@@ -212,7 +212,7 @@ resource "aws_default_route_table" "default" {
 }
 
 ################
-# Publiс routes
+# Public routes
 ################
 resource "aws_route_table" "public" {
   count = var.create_vpc && length(var.public_subnets) > 0 || length(var.public_eks_subnets_blue) > 0 || length(var.public_eks_subnets_green) > 0 ? 1 : 0
@@ -423,11 +423,8 @@ resource "aws_subnet" "public_eks_blue" {
 
   tags = merge(
     {
-      "Name" = format(
-        "%s-${var.public_subnet_suffix}-%s",
-        var.name,
-        element(var.azs, count.index),
-      )
+      "Name"                  = format("%s-${var.public_subnet_suffix}-%s", var.name, element(var.azs, count.index)),
+      "Supported_Environment" = "${var.name}-public-eks-blue-${count.index}"
     },
     var.tags,
     var.public_eks_subnet_tags_blue,
@@ -448,11 +445,8 @@ resource "aws_subnet" "public_eks_green" {
 
   tags = merge(
     {
-      "Name" = format(
-        "%s-${var.public_subnet_suffix}-%s",
-        var.name,
-        element(var.azs, count.index),
-      )
+      "Name"                  = format("%s-${var.public_subnet_suffix}-%s", var.name, element(var.azs, count.index)),
+      "Supported_Environment" = "${var.name}-public-eks-green-${count.index}"
     },
     var.tags,
     var.public_eks_subnet_tags_green,
@@ -487,7 +481,6 @@ resource "aws_subnet" "private" {
   )
 }
 
-##################
 ###############################################################################
 # Private EKS subnet
 ###############################################################################
@@ -505,11 +498,8 @@ resource "aws_subnet" "private_eks_blue" {
 
   tags = merge(
     {
-      "Name" = format(
-        "%s-${var.private_subnet_suffix}-%s",
-        var.name,
-        element(var.azs, count.index),
-      )
+      "Name"                  = format("%s-${var.private_subnet_suffix}-%s", var.name, element(var.azs, count.index)),
+      "Supported_Environment" = "${var.name}-private-eks-blue-${count.index}"
     },
     var.tags,
     var.private_eks_subnet_tags_blue,
@@ -529,20 +519,17 @@ resource "aws_subnet" "private_eks_green" {
 
   tags = merge(
     {
-      "Name" = format(
-        "%s-${var.private_subnet_suffix}-%s",
-        var.name,
-        element(var.azs, count.index),
-      )
+      "Name"                  = format("%s-${var.private_subnet_suffix}-%s", var.name, element(var.azs, count.index)),
+      "Supported_Environment" = "${var.name}-private-eks-green-${count.index}"
     },
     var.tags,
     var.private_eks_subnet_tags_green,
   )
 }
 
-################################################################################
+###############################################################################
 # Database subnet
-##################
+###############################################################################
 resource "aws_subnet" "database" {
   count = var.create_vpc && length(var.database_subnets) > 0 ? length(var.database_subnets) : 0
 
