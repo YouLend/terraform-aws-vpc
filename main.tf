@@ -424,7 +424,7 @@ resource "aws_subnet" "public_eks_blue" {
   tags = merge(
     {
       "Name"                  = format("%s-${var.public_subnet_suffix}-%s", var.name, element(var.azs, count.index)),
-      "Supported_Environment" = "${var.name}-public-eks-blue-${count.index}"
+      "Supported_Environment" = "${var.name}-public-eks-blue"
     },
     var.tags,
     var.public_eks_subnet_tags_blue,
@@ -446,7 +446,7 @@ resource "aws_subnet" "public_eks_green" {
   tags = merge(
     {
       "Name"                  = format("%s-${var.public_subnet_suffix}-%s", var.name, element(var.azs, count.index)),
-      "Supported_Environment" = "${var.name}-public-eks-green-${count.index}"
+      "Supported_Environment" = "${var.name}-public-eks-green"
     },
     var.tags,
     var.public_eks_subnet_tags_green,
@@ -499,7 +499,7 @@ resource "aws_subnet" "private_eks_blue" {
   tags = merge(
     {
       "Name"                  = format("%s-${var.private_subnet_suffix}-%s", var.name, element(var.azs, count.index)),
-      "Supported_Environment" = "${var.name}-private-eks-blue-${count.index}"
+      "Supported_Environment" = "${var.name}-private-eks-blue"
     },
     var.tags,
     var.private_eks_subnet_tags_blue,
@@ -520,7 +520,7 @@ resource "aws_subnet" "private_eks_green" {
   tags = merge(
     {
       "Name"                  = format("%s-${var.private_subnet_suffix}-%s", var.name, element(var.azs, count.index)),
-      "Supported_Environment" = "${var.name}-private-eks-green-${count.index}"
+      "Supported_Environment" = "${var.name}-private-eks-green"
     },
     var.tags,
     var.private_eks_subnet_tags_green,
