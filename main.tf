@@ -404,6 +404,11 @@ resource "aws_subnet" "public" {
     var.tags,
     var.public_subnet_tags,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 #####################
@@ -432,6 +437,11 @@ resource "aws_subnet" "public_eks_blue" {
     var.tags,
     var.public_eks_subnet_tags_blue,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 resource "aws_subnet" "public_eks_green" {
@@ -457,6 +467,11 @@ resource "aws_subnet" "public_eks_green" {
     var.tags,
     var.public_eks_subnet_tags_green,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 
@@ -485,6 +500,11 @@ resource "aws_subnet" "private" {
     var.tags,
     var.private_subnet_tags,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 ##################
@@ -514,6 +534,11 @@ resource "aws_subnet" "private_eks_blue" {
     var.tags,
     var.private_eks_subnet_tags_blue,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 resource "aws_subnet" "private_eks_green" {
@@ -538,6 +563,11 @@ resource "aws_subnet" "private_eks_green" {
     var.tags,
     var.private_eks_subnet_tags_green,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 ################################################################################
@@ -565,6 +595,11 @@ resource "aws_subnet" "database" {
     var.tags,
     var.database_subnet_tags,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 resource "aws_db_subnet_group" "database" {
@@ -608,6 +643,11 @@ resource "aws_subnet" "redshift" {
     var.tags,
     var.redshift_subnet_tags,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 resource "aws_redshift_subnet_group" "redshift" {
@@ -651,6 +691,11 @@ resource "aws_subnet" "elasticache" {
     var.tags,
     var.elasticache_subnet_tags,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 resource "aws_elasticache_subnet_group" "elasticache" {
@@ -694,6 +739,11 @@ resource "aws_subnet" "intra" {
     var.tags,
     var.intra_subnet_tags,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 #######################
