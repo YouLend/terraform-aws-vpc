@@ -32,14 +32,20 @@ resource "aws_vpc" "this" {
   #tfsec:ignore:aws-ec2-require-vpc-flow-logs-for-all-vpcs
   count = var.create_vpc ? 1 : 0
 
-  cidr_block                       = var.cidr
-  instance_tenancy                 = var.instance_tenancy
-  enable_dns_hostnames             = var.enable_dns_hostnames
-  enable_dns_support               = var.enable_dns_support
-  enable_classiclink               = var.enable_classiclink
-  enable_classiclink_dns_support   = var.enable_classiclink_dns_support
-  assign_generated_ipv6_cidr_block = var.enable_ipv6
+  cidr_block                       = var.use_ipam_pool ? null : var.cidr
+  ipv4_ipam_pool_id                = var.ipv4_ipam_pool_id
+  ipv4_netmask_length              = var.ipv4_netmask_length
 
+  assign_generated_ipv6_cidr_block     = var.enable_ipv6 && !var.use_ipam_pool ? true : null
+  ipv6_cidr_block                      = var.ipv6_cidr
+  ipv6_ipam_pool_id                    = var.ipv6_ipam_pool_id
+  ipv6_netmask_length                  = var.ipv6_netmask_length
+  ipv6_cidr_block_network_border_group = var.ipv6_cidr_block_network_border_group
+  instance_tenancy                     = var.instance_tenancy
+  enable_dns_hostnames                 = var.enable_dns_hostnames
+  enable_dns_support                   = var.enable_dns_support
+  enable_network_address_usage_metrics = var.enable_network_address_usage_metrics
+  
   tags = merge(
     {
       "Name" = format("%s", var.name)
@@ -398,13 +404,16 @@ resource "aws_subnet" "public" {
     var.tags,
     var.public_subnet_tags,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 #####################
 # Public eks subnet
 #####################
-
-
 resource "aws_subnet" "public_eks_blue" {
   count = var.create_vpc && length(var.public_eks_subnets_blue) > 0 && (false == var.one_nat_gateway_per_az || length(var.public_eks_subnets_blue) >= length(var.azs)) ? length(var.public_eks_subnets_blue) : 0
 
@@ -428,6 +437,11 @@ resource "aws_subnet" "public_eks_blue" {
     var.tags,
     var.public_eks_subnet_tags_blue,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 resource "aws_subnet" "public_eks_green" {
@@ -453,6 +467,11 @@ resource "aws_subnet" "public_eks_green" {
     var.tags,
     var.public_eks_subnet_tags_green,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 
@@ -481,6 +500,11 @@ resource "aws_subnet" "private" {
     var.tags,
     var.private_subnet_tags,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 ##################
@@ -510,6 +534,11 @@ resource "aws_subnet" "private_eks_blue" {
     var.tags,
     var.private_eks_subnet_tags_blue,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 resource "aws_subnet" "private_eks_green" {
@@ -534,6 +563,11 @@ resource "aws_subnet" "private_eks_green" {
     var.tags,
     var.private_eks_subnet_tags_green,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 ################################################################################
@@ -561,6 +595,11 @@ resource "aws_subnet" "database" {
     var.tags,
     var.database_subnet_tags,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 resource "aws_db_subnet_group" "database" {
@@ -604,6 +643,11 @@ resource "aws_subnet" "redshift" {
     var.tags,
     var.redshift_subnet_tags,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 resource "aws_redshift_subnet_group" "redshift" {
@@ -647,6 +691,11 @@ resource "aws_subnet" "elasticache" {
     var.tags,
     var.elasticache_subnet_tags,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 resource "aws_elasticache_subnet_group" "elasticache" {
@@ -690,6 +739,11 @@ resource "aws_subnet" "intra" {
     var.tags,
     var.intra_subnet_tags,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 #######################
@@ -1297,7 +1351,7 @@ locals {
 resource "aws_eip" "nat" {
   count = var.create_vpc && var.enable_nat_gateway && false == var.reuse_nat_ips ? local.nat_gateway_count : 0
 
-  vpc = true
+  domain = "vpc"
 
   tags = merge(
     {
@@ -1575,8 +1629,7 @@ resource "aws_default_vpc" "this" {
 
   enable_dns_support   = var.default_vpc_enable_dns_support
   enable_dns_hostnames = var.default_vpc_enable_dns_hostnames
-  enable_classiclink   = var.default_vpc_enable_classiclink
-
+  
   tags = merge(
     {
       "Name" = format("%s", var.default_vpc_name)
