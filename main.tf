@@ -8,7 +8,14 @@ locals {
     length(var.private_eks_subnets_green)
   )
   nat_gateway_count = var.single_nat_gateway ? 1 : var.one_nat_gateway_per_az ? length(var.azs) : local.max_subnet_length
-
+  
+  nat_gateway_details = {
+    for idx, subnet_id in var.public_subnets : subnet_id => {
+      subnet_id     = subnet_id
+      allocation_id = local.nat_gateway_ips[idx % length(local.nat_gateway_ips)]
+      az            = var.azs[idx % length(var.azs)]
+    }
+  }
   # Use `local.vpc_id` to give a hint to Terraform that subnets should be deleted before secondary CIDR blocks can be free!
   vpc_id = element(
     concat(
@@ -1365,29 +1372,18 @@ resource "aws_eip" "nat" {
     var.nat_eip_tags,
   )
 }
-
 resource "aws_nat_gateway" "this" {
-  count = var.create_vpc && var.enable_nat_gateway ? local.nat_gateway_count : 0
+  for_each = var.create_vpc && var.enable_nat_gateway ? local.nat_gateway_details : {}
 
-  allocation_id = element(
-    local.nat_gateway_ips,
-    var.single_nat_gateway ? 0 : count.index,
-  )
-  subnet_id = element(
-    aws_subnet.public.*.id,
-    var.single_nat_gateway ? 0 : count.index,
-  )
+  allocation_id = each.value.allocation_id
+  subnet_id     = each.value.subnet_id
 
   tags = merge(
     {
-      "Name" = format(
-        "%s-%s",
-        var.name,
-        element(var.azs, var.single_nat_gateway ? 0 : count.index),
-      )
+      "Name" = format("%s-%s", var.name, each.value.az)
     },
     var.tags,
-    var.nat_gateway_tags,
+    var.nat_gateway_tags
   )
 
   depends_on = [aws_internet_gateway.this]
