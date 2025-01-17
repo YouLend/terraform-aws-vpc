@@ -268,20 +268,15 @@ output "database_route_table_ids" {
   value       = length(aws_route_table.database.*.id) > 0 ? aws_route_table.database.*.id : aws_route_table.private.*.id
 }
 
-output "elasticache_route_table_ids" {
-  description = "List of IDs of elasticache route tables"
-  value = length(keys(aws_route_table.elasticache)) > 0 ?
-          [for k, rt in aws_route_table.elasticache : rt.id] :
-          []
-}
-
 output "redshift_route_table_ids" {
   description = "List of IDs of redshift route tables"
-  value = length(keys(aws_route_table.redshift)) > 0 ?
-          [for k, rt in aws_route_table.redshift : rt.id] :
-          []
+  value       = length(aws_route_table.redshift[*].id) > 0 ? aws_route_table.redshift[*].id : (var.enable_public_redshift ? aws_route_table.public[*].id : aws_route_table.private[*].id)
 }
 
+output "elasticache_route_table_ids" {
+  description = "List of IDs of elasticache route tables"
+  value       = length(aws_route_table.elasticache[*].id) > 0 ? aws_route_table.elasticache[*].id : aws_route_table.private[*].id
+}
 
 output "intra_route_table_ids" {
   description = "List of IDs of intra route tables"
