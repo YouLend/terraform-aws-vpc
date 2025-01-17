@@ -277,21 +277,18 @@ resource "aws_route_table" "private" {
 #################
 resource "aws_route_table" "database" {
   for_each = var.create_vpc && var.create_database_subnet_route_table && length(var.database_subnets) > 0 ? 
-              (var.single_nat_gateway || var.create_database_internet_gateway_route ? 
-                { "single" : var.database_subnets[0] } : 
-                { for subnet_id in var.database_subnets : subnet_id => subnet_id }) 
-              : {}
-  
+             (var.single_nat_gateway || var.create_database_internet_gateway_route ? 
+               { "single" : "single_route_table" } : 
+               { for idx, subnet in var.database_subnets : subnet => subnet }) :
+             {}
+
   vpc_id = local.vpc_id
 
   tags = merge(
     {
-      "Name" = format(
-        "%s-%s%s", 
-        var.name, 
-        var.database_subnet_suffix, 
-        var.single_nat_gateway || var.create_database_internet_gateway_route ? "" : format("-%s", each.key)
-      )
+      "Name" = var.single_nat_gateway || var.create_database_internet_gateway_route ? 
+               "${var.name}-${var.database_subnet_suffix}" : 
+               format("%s-${var.database_subnet_suffix}-%s", var.name, each.key)
     },
     var.tags,
     var.database_route_table_tags
