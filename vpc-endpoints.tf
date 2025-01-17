@@ -29,12 +29,11 @@ resource "aws_vpc_endpoint" "s3" {
 }
 
 resource "aws_vpc_endpoint_route_table_association" "private_s3" {
-  count = var.create_vpc && var.enable_s3_endpoint && var.s3_endpoint_type == "Gateway" ? local.nat_gateway_count : 0
+  for_each = var.create_vpc && var.enable_s3_endpoint && var.s3_endpoint_type == "Gateway" ? aws_route_table.private : {}
 
-  vpc_endpoint_id = aws_vpc_endpoint.s3[0].id
-  route_table_id  = element(aws_route_table.private.*.id, count.index)
+  vpc_endpoint_id = aws_vpc_endpoint.s3[0].id  # Adjust if aws_vpc_endpoint.s3 also uses `for_each`
+  route_table_id  = each.value.id
 }
-
 resource "aws_vpc_endpoint_route_table_association" "intra_s3" {
   count = var.create_vpc && var.enable_s3_endpoint && length(var.intra_subnets) > 0 && var.s3_endpoint_type == "Gateway" ? 1 : 0
 
