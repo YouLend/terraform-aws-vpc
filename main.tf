@@ -1433,20 +1433,20 @@ resource "aws_route_table_association" "private" {
     var.single_nat_gateway ? 0 : count.index,
   )
 }
-
 resource "aws_route_table_association" "private_eks_blue" {
-  for_each = aws_subnet.private_eks_blue
+  for_each = var.create_vpc && length(var.private_eks_subnets_blue) > 0 ? { for subnet_id in var.private_eks_subnets_blue : subnet_id => subnet_id } : {}
 
-  subnet_id     = each.value.id
+  subnet_id = each.key
   route_table_id = var.single_nat_gateway ? (element(values(aws_route_table.private).*.id, 0)) : aws_route_table.private[each.key].id
 }
 
 resource "aws_route_table_association" "private_eks_green" {
-  for_each = { for idx, subnet_id in pairs(var.private_eks_subnets_green) : subnet_id => subnet_id }
+  for_each = var.create_vpc && length(var.private_eks_subnets_green) > 0 ? { for subnet_id in var.private_eks_subnets_green : subnet_id => subnet_id } : {}
 
-  subnet_id     = each.key
+  subnet_id = each.key
   route_table_id = var.single_nat_gateway ? (element(values(aws_route_table.private).*.id, 0)) : aws_route_table.private[each.key].id
 }
+
 resource "aws_route_table_association" "database" {
   count = var.create_vpc && length(var.database_subnets) > 0 ? length(var.database_subnets) : 0
 
