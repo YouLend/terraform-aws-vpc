@@ -277,11 +277,11 @@ resource "aws_route_table" "private" {
 #################
 resource "aws_route_table" "database" {
   for_each = var.create_vpc && var.create_database_subnet_route_table && length(var.database_subnets) > 0 ? 
-    (var.single_nat_gateway || var.create_database_internet_gateway_route ? 
-      { "single" : var.database_subnets[0] } :  # Use the first subnet as a placeholder if a single route table is needed
-      { for subnet_id in var.database_subnets : subnet_id => subnet_id }) 
-    : {}
-
+              (var.single_nat_gateway || var.create_database_internet_gateway_route ? 
+                { "single" : var.database_subnets[0] } : 
+                { for subnet_id in var.database_subnets : subnet_id => subnet_id }) 
+              : {}
+  
   vpc_id = local.vpc_id
 
   tags = merge(
@@ -1449,26 +1449,18 @@ resource "aws_route_table_association" "private_eks_green" {
   subnet_id = each.key
   route_table_id = var.single_nat_gateway ? (element(values(aws_route_table.private).*.id, 0)) : aws_route_table.private[each.key].id
 }
-
 resource "aws_route_table_association" "database" {
-  # Properly close the for_each with a suitable default if the condition is false
   for_each = var.create_vpc && var.create_database_subnet_route_table && length(var.database_subnets) > 0 ? 
               { for subnet_id in var.database_subnets : subnet_id => subnet_id } : 
               {}
 
-  # Assign the subnet ID from the current iteration
   subnet_id = each.key
-  
-  # Conditional logic to determine the route table ID based on various flags
   route_table_id = var.create_database_subnet_route_table ? 
                     (var.single_nat_gateway || var.create_database_internet_gateway_route ? 
-                      element(values(aws_route_table.database), 0).id :  # Assumes aws_route_table.database uses for_each
-                      aws_route_table.database[each.key].id) :           # and there's always at least one
-                    aws_route_table.private[each.key].id                 # Assumes aws_route_table.private uses for_each
+                      element(values(aws_route_table.database), 0).id :  
+                      aws_route_table.database[each.key].id) :           
+                    aws_route_table.private[each.key].id                 
 }
-
-
-
 
 resource "aws_route_table_association" "redshift_public" {
   count = var.create_vpc && length(var.redshift_subnets) > 0 && var.enable_public_redshift ? length(var.redshift_subnets) : 0
