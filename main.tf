@@ -16,6 +16,11 @@ locals {
       az            = var.azs[idx % length(var.azs)]
     }
   }
+  database_subnet_map = var.create_vpc && var.create_database_subnet_route_table && length(var.database_subnets) > 0 ? 
+                        (var.single_nat_gateway || var.create_database_internet_gateway_route ? 
+                          { "single" : var.database_subnets[0] } :  # Using the first subnet as a placeholder key for single resource
+                          { for subnet_id in var.database_subnets : subnet_id => subnet_id }) :
+                        {}
   # Use `local.vpc_id` to give a hint to Terraform that subnets should be deleted before secondary CIDR blocks can be free!
   vpc_id = element(
     concat(
@@ -276,11 +281,7 @@ resource "aws_route_table" "private" {
 # Database routes
 #################
 resource "aws_route_table" "database" {
-  for_each = var.create_vpc && var.create_database_subnet_route_table && length(var.database_subnets) > 0 ? 
-             (var.single_nat_gateway || var.create_database_internet_gateway_route ? 
-               { "single" : "single_route_table" } : 
-               { for idx, subnet in var.database_subnets : subnet => subnet }) :
-             {}
+  for_each = local.database_subnet_map
 
   vpc_id = local.vpc_id
 
@@ -288,13 +289,12 @@ resource "aws_route_table" "database" {
     {
       "Name" = var.single_nat_gateway || var.create_database_internet_gateway_route ? 
                "${var.name}-${var.database_subnet_suffix}" : 
-               format("%s-${var.database_subnet_suffix}-%s", var.name, each.key)
+               format("%s-%s-%s", var.name, var.database_subnet_suffix, each.key)
     },
     var.tags,
     var.database_route_table_tags
   )
 }
-
 resource "aws_route" "database_internet_gateway" {
   count = var.create_vpc && var.create_igw && var.create_database_subnet_route_table && length(var.database_subnets) > 0 && var.create_database_internet_gateway_route && false == var.create_database_nat_gateway_route ? 1 : 0
 
