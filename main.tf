@@ -16,11 +16,6 @@ locals {
       az            = var.azs[idx % length(var.azs)]
     }
   }
-  database_subnet_map = var.create_vpc && var.create_database_subnet_route_table && length(var.database_subnets) > 0 ? 
-                        (var.single_nat_gateway || var.create_database_internet_gateway_route ? 
-                          { "single" : var.database_subnets[0] } :  # Using the first subnet as a placeholder key for single resource
-                          { for subnet_id in var.database_subnets : subnet_id => subnet_id }) :
-                        {}
   # Use `local.vpc_id` to give a hint to Terraform that subnets should be deleted before secondary CIDR blocks can be free!
   vpc_id = element(
     concat(
@@ -281,18 +276,20 @@ resource "aws_route_table" "private" {
 # Database routes
 #################
 resource "aws_route_table" "database" {
-  for_each = local.database_subnet_map
+  count = var.create_vpc && var.create_database_subnet_route_table && length(var.database_subnets) > 0 ? var.single_nat_gateway || var.create_database_internet_gateway_route ? 1 : length(var.database_subnets) : 0
 
   vpc_id = local.vpc_id
 
   tags = merge(
     {
-      "Name" = var.single_nat_gateway || var.create_database_internet_gateway_route ? 
-               "${var.name}-${var.database_subnet_suffix}" : 
-               format("%s-%s-%s", var.name, var.database_subnet_suffix, each.key)
+      "Name" = var.single_nat_gateway || var.create_database_internet_gateway_route ? "${var.name}-${var.database_subnet_suffix}" : format(
+        "%s-${var.database_subnet_suffix}-%s",
+        var.name,
+        element(var.azs, count.index),
+      )
     },
     var.tags,
-    var.database_route_table_tags
+    var.database_route_table_tags,
   )
 }
 resource "aws_route" "database_internet_gateway" {
@@ -1447,18 +1444,14 @@ resource "aws_route_table_association" "private_eks_green" {
   route_table_id = var.single_nat_gateway ? (element(values(aws_route_table.private).*.id, 0)) : aws_route_table.private[each.key].id
 }
 resource "aws_route_table_association" "database" {
-  for_each = var.create_vpc && var.create_database_subnet_route_table && length(var.database_subnets) > 0 ? 
-              { for subnet_id in var.database_subnets : subnet_id => subnet_id } : 
-              {}
+  count = var.create_vpc && length(var.database_subnets) > 0 ? length(var.database_subnets) : 0
 
-  subnet_id = each.key
-  route_table_id = var.create_database_subnet_route_table ? 
-                    (var.single_nat_gateway || var.create_database_internet_gateway_route ? 
-                      element(values(aws_route_table.database), 0).id :  
-                      aws_route_table.database[each.key].id) :           
-                    aws_route_table.private[each.key].id                 
+  subnet_id = element(aws_subnet.database[*].id, count.index)
+  route_table_id = element(
+    coalescelist(aws_route_table.database[*].id, aws_route_table.private[*].id),
+    var.create_database_subnet_route_table ? var.single_nat_gateway || var.create_database_internet_gateway_route ? 0 : count.index : count.index,
+  )
 }
-
 resource "aws_route_table_association" "redshift_public" {
   count = var.create_vpc && length(var.redshift_subnets) > 0 && var.enable_public_redshift ? length(var.redshift_subnets) : 0
 
