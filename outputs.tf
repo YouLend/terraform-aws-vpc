@@ -260,23 +260,29 @@ output "public_route_table_ids" {
 
 output "private_route_table_ids" {
   description = "List of IDs of private route tables"
-  value       = aws_route_table.private.*.id
+  value       = [for r in aws_route_table.private : r.id]
 }
 
 output "database_route_table_ids" {
   description = "List of IDs of database route tables"
   value       = length(aws_route_table.database.*.id) > 0 ? aws_route_table.database.*.id : aws_route_table.private.*.id
 }
-
 output "redshift_route_table_ids" {
   description = "List of IDs of redshift route tables"
-  value       = length(aws_route_table.redshift.*.id) > 0 ? aws_route_table.redshift.*.id : (var.enable_public_redshift ? aws_route_table.public.*.id : aws_route_table.private.*.id)
+  value = length(keys(aws_route_table.redshift)) > 0 ?
+          [for rt in aws_route_table.redshift : rt.id] :
+          (var.enable_public_redshift ?
+           [for rt in aws_route_table.public : rt.id] :
+           [for rt in aws_route_table.private : rt.id])
 }
 
 output "elasticache_route_table_ids" {
   description = "List of IDs of elasticache route tables"
-  value       = length(aws_route_table.elasticache.*.id) > 0 ? aws_route_table.elasticache.*.id : aws_route_table.private.*.id
+  value = length(keys(aws_route_table.elasticache)) > 0 ?
+          [for rt in aws_route_table.elasticache : rt.id] :
+          [for rt in aws_route_table.private : rt.id]
 }
+
 
 output "intra_route_table_ids" {
   description = "List of IDs of intra route tables"
@@ -310,7 +316,7 @@ output "database_ipv6_egress_route_id" {
 
 output "private_nat_gateway_route_ids" {
   description = "List of IDs of the private nat gateway route."
-  value       = aws_route.private_nat_gateway.*.id
+  value       = [for route in aws_route.private_nat_gateway : route.id]
 }
 
 output "private_ipv6_egress_route_ids" {
