@@ -1456,14 +1456,17 @@ resource "aws_route_table_association" "database" {
               { for subnet_id in var.database_subnets : subnet_id => subnet_id } : 
               {}
 
-  # Ensure every reference within the for_each block is valid
-  subnet_id     = each.key
+  # Assign the subnet ID from the current iteration
+  subnet_id = each.key
+  
+  # Conditional logic to determine the route table ID based on various flags
   route_table_id = var.create_database_subnet_route_table ? 
                     (var.single_nat_gateway || var.create_database_internet_gateway_route ? 
                       element(values(aws_route_table.database), 0).id :  # Assumes aws_route_table.database uses for_each
                       aws_route_table.database[each.key].id) :           # and there's always at least one
                     aws_route_table.private[each.key].id                 # Assumes aws_route_table.private uses for_each
 }
+
 
 
 
