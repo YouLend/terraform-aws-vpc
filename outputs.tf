@@ -328,10 +328,12 @@ output "database_route_table_association_ids" {
   value       = aws_route_table_association.database[*].id
 }
 
+
 output "redshift_route_table_association_ids" {
-  description = "List of IDs of the redshift route table association"
-  value       = aws_route_table_association.redshift[*].id
+  description = "IDs of redshift route table associations"
+  value       = [for i in aws_route_table_association.redshift : i.id]
 }
+
 output "redshift_public_route_table_association_ids" {
   description = "List of IDs of the public redshidt route table association"
   value       = aws_route_table_association.redshift_public.*.id
