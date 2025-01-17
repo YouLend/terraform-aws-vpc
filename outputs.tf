@@ -325,14 +325,13 @@ output "private_route_table_association_ids" {
 
 output "database_route_table_association_ids" {
   description = "List of IDs of the database route table association"
-  value       = aws_route_table_association.database.*.id
+  value       = aws_route_table_association.database[*].id
 }
 
 output "redshift_route_table_association_ids" {
   description = "List of IDs of the redshift route table association"
-  value       = aws_route_table_association.redshift.*.id
+  value       = aws_route_table_association.redshift[*].id
 }
-
 output "redshift_public_route_table_association_ids" {
   description = "List of IDs of the public redshidt route table association"
   value       = aws_route_table_association.redshift_public.*.id
