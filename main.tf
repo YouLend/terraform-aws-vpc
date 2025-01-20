@@ -9,15 +9,13 @@ locals {
   )
   nat_gateway_count = var.single_nat_gateway ? 1 : var.one_nat_gateway_per_az ? length(var.azs) : local.max_subnet_length
   nat_gateway_ids = values(aws_nat_gateway.this)[*].id
-  public_subnet_ids = {
-    for idx, s in aws_subnet.public : s.id => {
-      subnet_id = s.id,
-      allocation_index = idx,  // Assuming matching order to nat_gateway_ips
-      az_index = idx          // Assuming matching order to azs
+  nat_gateways = {
+    for idx, az in var.azs : idx => {
+      az      = az
+      subnet  = element(aws_subnet.public[*].id, idx % length(aws_subnet.public[*].id))
+      eip     = element(local.nat_gateway_ips, idx % length(local.nat_gateway_ips))
     }
   }
-  subnet_ids = {for s in aws_subnet.public : s.id => s.id}
-  single_subnet_ids = tomap({ "single" = aws_subnet.public[0].id })
   # Use `local.vpc_id` to give a hint to Terraform that subnets should be deleted before secondary CIDR blocks can be free!
   vpc_id = element(
     concat(
@@ -1371,24 +1369,17 @@ resource "aws_eip" "nat" {
   )
 }
 resource "aws_nat_gateway" "this" {
-  for_each = var.create_vpc && var.enable_nat_gateway ? (var.single_nat_gateway ? local.single_subnet_ids : local.subnet_ids) : {}
+  for_each = var.enable_nat_gateway ? local.nat_gateways : {}
 
-  allocation_id = element(
-    local.nat_gateway_ips,
-    var.single_nat_gateway ? 0 : each.value  // `each.value` should refer to the same as `each.key` in this setup
-  )
-  subnet_id = each.value  // Directly use the subnet ID from the map
+  allocation_id = each.value.eip
+  subnet_id     = each.value.subnet
 
   tags = merge(
     {
-      "Name" = format(
-        "%s-%s",
-        var.name,
-        element(var.azs, var.single_nat_gateway ? 0 : index(local.subnet_ids, each.key))  // Calculate index dynamically if needed
-      )
+      "Name" = format("%s-%s", var.name, each.value.az)
     },
     var.tags,
-    var.nat_gateway_tags,
+    var.nat_gateway_tags
   )
 
   depends_on = [aws_internet_gateway.this]
