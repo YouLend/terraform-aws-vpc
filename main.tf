@@ -23,11 +23,7 @@ locals {
     var.tags,
     var.vpc_endpoint_tags,
   )
-  route_table_details = { for idx, az in var.azs : "${az}-${idx}" => {
-      az = az,
-      index = idx
-   }
-  }
+
   nat_gateway_details = (var.single_nat_gateway ? {
     "single" = {
       az            = element(var.azs, 0),
@@ -270,22 +266,20 @@ resource "aws_route" "public_internet_gateway_ipv6" {
 # There are as many routing tables as the number of NAT gateways
 #################
 resource "aws_route_table" "private" {
-  for_each = var.create_vpc && local.max_subnet_length > 0 ? local.route_table_details : {}
+  count = var.create_vpc && local.max_subnet_length > 0 ? local.nat_gateway_count : 0
 
   vpc_id = local.vpc_id
 
   tags = merge(
     {
-      "Name" = var.single_nat_gateway ? "${var.name}-${var.private_subnet_suffix}" : format(
-        "%s-${var.private_subnet_suffix}-%s",
-        var.name,
-        each.value.az
-      )
+      "Name" = var.single_nat_gateway ? "${var.name}-${var.private_subnet_suffix}" :
+        format("%s-%s-%s", var.name, var.private_subnet_suffix, element(var.azs, count.index))
     },
     var.tags,
     var.private_route_table_tags,
   )
 }
+
 
 #################
 # Database routes
