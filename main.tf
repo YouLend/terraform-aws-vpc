@@ -9,6 +9,7 @@ locals {
   )
   nat_gateway_count = var.single_nat_gateway ? 1 : var.one_nat_gateway_per_az ? length(var.azs) : local.max_subnet_length
   nat_gateway_ids = values(aws_nat_gateway.this)[*].id
+  public_subnet_ids = { for subnet in aws_subnet.public : subnet.id => subnet.id }
   nat_gateways = {
     for idx, az in var.azs : idx => {
       az      = az
