@@ -16,6 +16,7 @@ locals {
       az_index = idx          // Assuming matching order to azs
     }
   }
+
   # Use `local.vpc_id` to give a hint to Terraform that subnets should be deleted before secondary CIDR blocks can be free!
   vpc_id = element(
     concat(
@@ -1395,12 +1396,13 @@ resource "aws_nat_gateway" "this" {
 
   depends_on = [aws_internet_gateway.this]
 }
-resource "aws_route" "private_nat_gateway" {
-  for_each = var.create_vpc && var.enable_nat_gateway ? aws_nat_gateway.this : {}
 
-  route_table_id         = element(aws_route_table.private.*.id, each.value.az_index)  # Adjust if necessary
+resource "aws_route" "private_nat_gateway" {
+  for_each = var.create_vpc && var.enable_nat_gateway ? local.public_subnet_ids : {}
+
+  route_table_id         = aws_route_table.private[each.value.az_index].id
   destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = each.value.id
+  nat_gateway_id         = aws_nat_gateway.this[each.key].id
 
   timeouts {
     create = "5m"
