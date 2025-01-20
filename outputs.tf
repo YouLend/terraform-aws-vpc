@@ -310,7 +310,7 @@ output "database_ipv6_egress_route_id" {
 
 output "private_nat_gateway_route_ids" {
   description = "List of IDs of the private nat gateway route."
-  value       = aws_route.private_nat_gateway.*.id
+  value       = [for r in aws_route.private_nat_gateway : r.id]
 }
 
 output "private_ipv6_egress_route_ids" {
