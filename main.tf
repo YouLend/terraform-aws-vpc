@@ -23,18 +23,19 @@ locals {
     var.tags,
     var.vpc_endpoint_tags,
   )
-  nat_gateway_details = var.single_nat_gateway ? {
+  nat_gateway_details = (var.single_nat_gateway ? {
     "single" = {
-      az          = element(var.azs, 0)
-      subnet_id   = element(aws_subnet.public[*].id, 0)
+      az            = element(var.azs, 0),
+      subnet_id     = element(aws_subnet.public[*].id, 0),
       allocation_id = element(local.nat_gateway_ips, 0)
     }
-  } :
-  {for idx, az in var.azs : "${az}-${idx}" => {
-    az          = az
-    subnet_id   = element(aws_subnet.public[*].id, idx)
-    allocation_id = element(local.nat_gateway_ips, idx)
-  }}
+  } : {
+    for idx, az in var.azs : "${az}-${idx}" => {
+      az            = az,
+      subnet_id     = element(aws_subnet.public[*].id, idx),
+      allocation_id = element(local.nat_gateway_ips, idx)
+    }
+  })
 }
 ######
 # VPC
