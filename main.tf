@@ -261,17 +261,13 @@ resource "aws_route" "public_internet_gateway_ipv6" {
 # There are as many routing tables as the number of NAT gateways
 #################
 resource "aws_route_table" "private" {
-  count = var.create_vpc && local.max_subnet_length > 0 ? local.nat_gateway_count : 0
-
+  #count = var.create_vpc && local.max_subnet_length > 0 ? local.nat_gateway_count : 0
+  count = var.create_vpc ? length(var.azs) : 0
   vpc_id = local.vpc_id
 
-  tags = merge(
+    tags = merge(
     {
-      "Name" = var.single_nat_gateway ? "${var.name}-${var.private_subnet_suffix}" : format(
-        "%s-${var.private_subnet_suffix}-%s",
-        var.name,
-        element(var.azs, count.index),
-      )
+      "Name" = format("%s-${var.private_subnet_suffix}-%s", var.name, element(var.azs, count.index))
     },
     var.tags,
     var.private_route_table_tags,
@@ -1400,7 +1396,7 @@ resource "aws_nat_gateway" "this" {
 resource "aws_route" "private_nat_gateway" {
   for_each = var.create_vpc && var.enable_nat_gateway ? local.public_subnet_ids : {}
 
-  route_table_id         = aws_route_table.private[each.value.az_index].id
+  route_table_id         = aws_route_table.private[0].id
   destination_cidr_block = "0.0.0.0/0"
   nat_gateway_id         = aws_nat_gateway.this[each.key].id
 
