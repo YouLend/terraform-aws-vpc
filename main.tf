@@ -16,7 +16,8 @@ locals {
       az_index = idx          // Assuming matching order to azs
     }
   }
-
+  subnet_ids = {for s in aws_subnet.public : s.id => s.id}
+  single_subnet_ids = tomap({ "single" = aws_subnet.public[0].id })
   # Use `local.vpc_id` to give a hint to Terraform that subnets should be deleted before secondary CIDR blocks can be free!
   vpc_id = element(
     concat(
@@ -1370,20 +1371,20 @@ resource "aws_eip" "nat" {
   )
 }
 resource "aws_nat_gateway" "this" {
-  for_each = var.create_vpc && var.enable_nat_gateway ? (var.single_nat_gateway ? tomap({ "single" = local.public_subnet_ids[length(local.public_subnet_ids)-1] }) : local.public_subnet_ids) : {}
+  for_each = var.create_vpc && var.enable_nat_gateway ? (var.single_nat_gateway ? local.single_subnet_ids : local.subnet_ids) : {}
 
   allocation_id = element(
     local.nat_gateway_ips,
-    var.single_nat_gateway ? 0 : each.value.allocation_index
+    var.single_nat_gateway ? 0 : each.value  // `each.value` should refer to the same as `each.key` in this setup
   )
-  subnet_id = each.value.subnet_id  // Use the subnet_id stored in each map entry
+  subnet_id = each.value  // Directly use the subnet ID from the map
 
   tags = merge(
     {
       "Name" = format(
         "%s-%s",
         var.name,
-        element(var.azs, var.single_nat_gateway ? 0 : each.value.az_index)
+        element(var.azs, var.single_nat_gateway ? 0 : index(local.subnet_ids, each.key))  // Calculate index dynamically if needed
       )
     },
     var.tags,
@@ -1392,7 +1393,6 @@ resource "aws_nat_gateway" "this" {
 
   depends_on = [aws_internet_gateway.this]
 }
-
 
 resource "aws_route" "private_nat_gateway" {
   for_each = var.create_vpc && var.enable_nat_gateway ? local.public_subnet_ids : {}
