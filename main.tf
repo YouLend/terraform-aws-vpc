@@ -8,20 +8,12 @@ locals {
     length(var.private_eks_subnets_green)
   )
   nat_gateway_count = var.single_nat_gateway ? 1 : var.one_nat_gateway_per_az ? length(var.azs) : local.max_subnet_length
-  nat_gateway_ids = values(aws_nat_gateway.this)[*].id
-  public_subnet_ids = { for subnet in aws_subnet.public : subnet.id => subnet.id }
-  nat_gateways = {
-    for idx, az in var.azs : idx => {
-      az      = az
-      subnet  = element(aws_subnet.public[*].id, idx % length(aws_subnet.public[*].id))
-      eip     = element(local.nat_gateway_ips, idx % length(local.nat_gateway_ips))
-    }
-  }
+
   # Use `local.vpc_id` to give a hint to Terraform that subnets should be deleted before secondary CIDR blocks can be free!
   vpc_id = element(
     concat(
-      aws_vpc_ipv4_cidr_block_association.this.*.vpc_id,
-      aws_vpc.this.*.id,
+      aws_vpc_ipv4_cidr_block_association.this[*].vpc_id,
+      aws_vpc.this[*].id,
       [""],
     ),
     0,
@@ -31,8 +23,19 @@ locals {
     var.tags,
     var.vpc_endpoint_tags,
   )
+  nat_gateway_details = var.single_nat_gateway ? {
+    "single" = {
+      az          = element(var.azs, 0)
+      subnet_id   = element(aws_subnet.public[*].id, 0)
+      allocation_id = element(local.nat_gateway_ips, 0)
+    }
+  } :
+  {for idx, az in var.azs : "${az}-${idx}" => {
+    az          = az
+    subnet_id   = element(aws_subnet.public[*].id, idx)
+    allocation_id = element(local.nat_gateway_ips, idx)
+  }}
 }
-
 ######
 # VPC
 ######
@@ -1370,10 +1373,10 @@ resource "aws_eip" "nat" {
   )
 }
 resource "aws_nat_gateway" "this" {
-  for_each = var.enable_nat_gateway ? local.nat_gateways : {}
+  for_each = var.create_vpc && var.enable_nat_gateway ? local.nat_gateway_details : {}
 
-  allocation_id = each.value.eip
-  subnet_id     = each.value.subnet
+  allocation_id = each.value.allocation_id
+  subnet_id     = each.value.subnet_id
 
   tags = merge(
     {
@@ -1387,9 +1390,9 @@ resource "aws_nat_gateway" "this" {
 }
 
 resource "aws_route" "private_nat_gateway" {
-  for_each = var.create_vpc && var.enable_nat_gateway ? local.public_subnet_ids : {}
+  for_each = var.create_vpc && var.enable_nat_gateway ? local.nat_gateway_details : {}
 
-  route_table_id         = aws_route_table.private[0].id
+  route_table_id         = aws_route_table.private[0].id  // Consider dynamic selection if multiple route tables are used
   destination_cidr_block = "0.0.0.0/0"
   nat_gateway_id         = aws_nat_gateway.this[each.key].id
 
