@@ -1370,7 +1370,7 @@ resource "aws_eip" "nat" {
   )
 }
 resource "aws_nat_gateway" "this" {
-  for_each = var.create_vpc && var.enable_nat_gateway ? local.public_subnet_ids : {}
+  for_each = var.create_vpc && var.enable_nat_gateway ? (var.single_nat_gateway ? tomap({ "single" = local.public_subnet_ids[length(local.public_subnet_ids)-1] }) : local.public_subnet_ids) : {}
 
   allocation_id = element(
     local.nat_gateway_ips,
@@ -1392,6 +1392,7 @@ resource "aws_nat_gateway" "this" {
 
   depends_on = [aws_internet_gateway.this]
 }
+
 
 resource "aws_route" "private_nat_gateway" {
   for_each = var.create_vpc && var.enable_nat_gateway ? local.public_subnet_ids : {}
