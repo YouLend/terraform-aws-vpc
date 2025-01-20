@@ -8,7 +8,7 @@ locals {
     length(var.private_eks_subnets_green)
   )
   nat_gateway_count = var.single_nat_gateway ? 1 : var.one_nat_gateway_per_az ? length(var.azs) : local.max_subnet_length
-
+  nat_gateway_ids = values(aws_nat_gateway.this)[*].id
   public_subnet_ids = {
     for idx, s in aws_subnet.public : s.id => {
       subnet_id = s.id,

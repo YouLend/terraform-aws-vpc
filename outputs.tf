@@ -365,8 +365,9 @@ output "nat_public_ips" {
 
 output "natgw_ids" {
   description = "List of NAT Gateway IDs"
-  value       = aws_nat_gateway.this.*.id
+  value       = [for ngw in aws_nat_gateway.this : ngw.id]
 }
+
 
 output "igw_id" {
   description = "The ID of the Internet Gateway"
