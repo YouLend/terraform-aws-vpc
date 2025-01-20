@@ -272,14 +272,16 @@ resource "aws_route_table" "private" {
 
   tags = merge(
     {
-      "Name" = var.single_nat_gateway ? "${var.name}-${var.private_subnet_suffix}" :
-        format("%s-%s-%s", var.name, var.private_subnet_suffix, element(var.azs, count.index))
+      "Name" = var.single_nat_gateway ? "${var.name}-${var.private_subnet_suffix}" : format(
+        "%s-${var.private_subnet_suffix}-%s",
+        var.name,
+        element(var.azs, count.index),
+      )
     },
     var.tags,
     var.private_route_table_tags,
   )
 }
-
 
 #################
 # Database routes
