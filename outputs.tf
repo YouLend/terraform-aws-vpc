@@ -320,12 +320,12 @@ output "private_ipv6_egress_route_ids" {
 
 output "private_route_table_association_ids" {
   description = "List of IDs of the private route table association"
-  value       = aws_route_table_association.private.*.id
+  value       = values(aws_route_table_association.private)[*].id
 }
 
 output "database_route_table_association_ids" {
   description = "List of IDs of the database route table association"
-  value       = aws_route_table_association.database.*.id
+  value       = values(aws_route_table_association.database)[*].id
 }
 
 output "redshift_route_table_association_ids" {
