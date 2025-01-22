@@ -1457,14 +1457,15 @@ resource "aws_route_table_association" "private_eks_blue" {
   )
 }
 
-resource "aws_route_table_association" "private_eks_green" {
-  count = var.create_vpc && length(var.private_eks_subnets_green) > 0 ? length(var.private_eks_subnets_green) : 0
 
-  subnet_id = element(aws_subnet.private_eks_green.*.id, count.index)
-  route_table_id = element(
-    aws_route_table.private.*.id,
-    var.single_nat_gateway ? 0 : count.index,
-  )
+resource "aws_route_table_association" "private_eks_green" {
+  # Create a map where each subnet ID is associated with a route table ID
+  for_each = {
+    for idx, subnet_id in aws_subnet.private_eks_green[*].id : subnet_id => aws_route_table.private[var.single_nat_gateway ? 0 : idx].id
+  }
+
+  subnet_id      = each.key
+  route_table_id = each.value
 }
 
 resource "aws_route_table_association" "database" {
