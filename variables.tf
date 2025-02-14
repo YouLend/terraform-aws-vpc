@@ -6,8 +6,7 @@ variable "create_vpc" {
 variable "name" {
   description = "Name to be used on all the resources as identifier"
   type        = string
-  default     = ""
-}
+ }
 
 variable "cidr" {
   description = "The CIDR block for the VPC. Default value is a valid CIDR, but not acceptable by AWS and should be overridden.CIDR can be explicitly set or it can be derived from IPAM using `ipv4_netmask_length` & `ipv4_ipam_pool_id`"
@@ -2527,12 +2526,6 @@ variable "default_vpc_enable_dns_support" {
 
 variable "default_vpc_enable_dns_hostnames" {
   description = "Should be true to enable DNS hostnames in the Default VPC"
-  type        = bool
-  default     = false
-}
-
-variable "default_vpc_enable_classiclink" {
-  description = "Should be true to enable ClassicLink in the Default VPC"
   type        = bool
   default     = false
 }
