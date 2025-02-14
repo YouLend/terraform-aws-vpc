@@ -23,8 +23,21 @@ locals {
     var.tags,
     var.vpc_endpoint_tags,
   )
-}
 
+  nat_gateway_details = (var.single_nat_gateway ? {
+    "single" = {
+      az            = element(var.azs, 0),
+      subnet_id     = element(aws_subnet.public[*].id, 0),
+      allocation_id = element(local.nat_gateway_ips, 0)
+    }
+  } : {
+    for idx, az in var.azs : "${az}-${idx}" => {
+      az            = az,
+      subnet_id     = element(aws_subnet.public[*].id, idx),
+      allocation_id = element(local.nat_gateway_ips, idx)
+    }
+  })
+}
 ######
 # VPC
 ######
@@ -32,14 +45,20 @@ resource "aws_vpc" "this" {
   #tfsec:ignore:aws-ec2-require-vpc-flow-logs-for-all-vpcs
   count = var.create_vpc ? 1 : 0
 
-  cidr_block                       = var.cidr
-  instance_tenancy                 = var.instance_tenancy
-  enable_dns_hostnames             = var.enable_dns_hostnames
-  enable_dns_support               = var.enable_dns_support
-  enable_classiclink               = var.enable_classiclink
-  enable_classiclink_dns_support   = var.enable_classiclink_dns_support
-  assign_generated_ipv6_cidr_block = var.enable_ipv6
+  cidr_block                       = var.use_ipam_pool ? null : var.cidr
+  ipv4_ipam_pool_id                = var.ipv4_ipam_pool_id
+  ipv4_netmask_length              = var.ipv4_netmask_length
 
+  assign_generated_ipv6_cidr_block     = var.enable_ipv6 && !var.use_ipam_pool ? true : null
+  ipv6_cidr_block                      = var.ipv6_cidr
+  ipv6_ipam_pool_id                    = var.ipv6_ipam_pool_id
+  ipv6_netmask_length                  = var.ipv6_netmask_length
+  ipv6_cidr_block_network_border_group = var.ipv6_cidr_block_network_border_group
+  instance_tenancy                     = var.instance_tenancy
+  enable_dns_hostnames                 = var.enable_dns_hostnames
+  enable_dns_support                   = var.enable_dns_support
+  enable_network_address_usage_metrics = var.enable_network_address_usage_metrics
+  
   tags = merge(
     {
       "Name" = format("%s", var.name)
@@ -398,13 +417,16 @@ resource "aws_subnet" "public" {
     var.tags,
     var.public_subnet_tags,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 #####################
 # Public eks subnet
 #####################
-
-
 resource "aws_subnet" "public_eks_blue" {
   count = var.create_vpc && length(var.public_eks_subnets_blue) > 0 && (false == var.one_nat_gateway_per_az || length(var.public_eks_subnets_blue) >= length(var.azs)) ? length(var.public_eks_subnets_blue) : 0
 
@@ -428,6 +450,11 @@ resource "aws_subnet" "public_eks_blue" {
     var.tags,
     var.public_eks_subnet_tags_blue,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 resource "aws_subnet" "public_eks_green" {
@@ -453,6 +480,11 @@ resource "aws_subnet" "public_eks_green" {
     var.tags,
     var.public_eks_subnet_tags_green,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 
@@ -481,6 +513,11 @@ resource "aws_subnet" "private" {
     var.tags,
     var.private_subnet_tags,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 ##################
@@ -510,6 +547,11 @@ resource "aws_subnet" "private_eks_blue" {
     var.tags,
     var.private_eks_subnet_tags_blue,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 resource "aws_subnet" "private_eks_green" {
@@ -534,6 +576,11 @@ resource "aws_subnet" "private_eks_green" {
     var.tags,
     var.private_eks_subnet_tags_green,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 ################################################################################
@@ -561,6 +608,11 @@ resource "aws_subnet" "database" {
     var.tags,
     var.database_subnet_tags,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 resource "aws_db_subnet_group" "database" {
@@ -604,6 +656,11 @@ resource "aws_subnet" "redshift" {
     var.tags,
     var.redshift_subnet_tags,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 resource "aws_redshift_subnet_group" "redshift" {
@@ -647,6 +704,11 @@ resource "aws_subnet" "elasticache" {
     var.tags,
     var.elasticache_subnet_tags,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 resource "aws_elasticache_subnet_group" "elasticache" {
@@ -690,6 +752,11 @@ resource "aws_subnet" "intra" {
     var.tags,
     var.intra_subnet_tags,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 #######################
@@ -1297,7 +1364,7 @@ locals {
 resource "aws_eip" "nat" {
   count = var.create_vpc && var.enable_nat_gateway && false == var.reuse_nat_ips ? local.nat_gateway_count : 0
 
-  vpc = true
+  domain = "vpc"
 
   tags = merge(
     {
@@ -1311,40 +1378,29 @@ resource "aws_eip" "nat" {
     var.nat_eip_tags,
   )
 }
-
 resource "aws_nat_gateway" "this" {
-  count = var.create_vpc && var.enable_nat_gateway ? local.nat_gateway_count : 0
-
-  allocation_id = element(
-    local.nat_gateway_ips,
-    var.single_nat_gateway ? 0 : count.index,
-  )
-  subnet_id = element(
-    aws_subnet.public[*].id,
-    var.single_nat_gateway ? 0 : count.index,
-  )
+  for_each = var.create_vpc && var.enable_nat_gateway ? local.nat_gateway_details : {}
+  allocation_id = each.value.allocation_id
+  subnet_id     = each.value.subnet_id
 
   tags = merge(
     {
-      "Name" = format(
-        "%s-%s",
-        var.name,
-        element(var.azs, var.single_nat_gateway ? 0 : count.index),
-      )
+      "Name" = format("%s-%s", var.name, each.value.az)
     },
     var.tags,
-    var.nat_gateway_tags,
+    var.nat_gateway_tags
   )
 
   depends_on = [aws_internet_gateway.this]
 }
 
 resource "aws_route" "private_nat_gateway" {
-  count = var.create_vpc && var.enable_nat_gateway ? local.nat_gateway_count : 0
+  for_each = var.create_vpc && var.enable_nat_gateway ? local.nat_gateway_details : {}
 
-  route_table_id         = element(aws_route_table.private[*].id, count.index)
+  route_table_id         = aws_route_table.private[0].id  // Consider dynamic selection if multiple route tables are used
   destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = element(aws_nat_gateway.this[*].id, count.index)
+  nat_gateway_id         = aws_nat_gateway.this[each.key].id
+
 
   timeouts {
     create = "5m"
@@ -1382,43 +1438,49 @@ resource "aws_route" "private_eks_ipv6_egress_green" {
 # Route table association
 ##########################
 resource "aws_route_table_association" "private" {
-  count = var.create_vpc && length(var.private_subnets) > 0 ? length(var.private_subnets) : 0
+  # Create a map where each subnet ID is associated with a route table ID
+  for_each = {
+    for idx, subnet_id in aws_subnet.private[*].id : subnet_id => aws_route_table.private[var.single_nat_gateway ? 0 : idx].id
+  }
+  subnet_id      = each.key
+  route_table_id = each.value
 
-  subnet_id = element(aws_subnet.private[*].id, count.index)
-  route_table_id = element(
-    aws_route_table.private[*].id,
-    var.single_nat_gateway ? 0 : count.index,
-  )
 }
 
 resource "aws_route_table_association" "private_eks_blue" {
-  count = var.create_vpc && length(var.private_eks_subnets_blue) > 0 ? length(var.private_eks_subnets_blue) : 0
+  # Create a map where each subnet ID is associated with a route table ID
+  for_each = {
+    for idx, subnet_id in aws_subnet.private_eks_blue[*].id : subnet_id => aws_route_table.private[var.single_nat_gateway ? 0 : idx].id
+  }
 
-  subnet_id = element(aws_subnet.private_eks_blue[*].id, count.index)
-  route_table_id = element(
-    aws_route_table.private[*].id,
-    var.single_nat_gateway ? 0 : count.index,
-  )
+  subnet_id      = each.key
+  route_table_id = each.value
+
 }
+
 
 resource "aws_route_table_association" "private_eks_green" {
-  count = var.create_vpc && length(var.private_eks_subnets_green) > 0 ? length(var.private_eks_subnets_green) : 0
+  # Create a map where each subnet ID is associated with a route table ID
+  for_each = {
+    for idx, subnet_id in aws_subnet.private_eks_green[*].id : subnet_id => aws_route_table.private[var.single_nat_gateway ? 0 : idx].id
+  }
 
-  subnet_id = element(aws_subnet.private_eks_green[*].id, count.index)
-  route_table_id = element(
-    aws_route_table.private[*].id,
-    var.single_nat_gateway ? 0 : count.index,
-  )
+  subnet_id      = each.key
+  route_table_id = each.value
+
 }
-
 resource "aws_route_table_association" "database" {
-  count = var.create_vpc && length(var.database_subnets) > 0 ? length(var.database_subnets) : 0
+  for_each = {
+    for idx, subnet_id in aws_subnet.database[*].id : subnet_id => coalescelist(
+      aws_route_table.database[*].id, 
+      aws_route_table.private[*].id
+    )[var.create_database_subnet_route_table ? var.single_nat_gateway || var.create_database_internet_gateway_route ? 0 : idx : idx]
+  }
 
-  subnet_id = element(aws_subnet.database[*].id, count.index)
-  route_table_id = element(
-    coalescelist(aws_route_table.database[*].id, aws_route_table.private[*].id),
-    var.create_database_subnet_route_table ? var.single_nat_gateway || var.create_database_internet_gateway_route ? 0 : count.index : count.index,
-  )
+
+  subnet_id      = each.key
+  route_table_id = each.value
+
 }
 
 resource "aws_route_table_association" "redshift" {
@@ -1575,8 +1637,7 @@ resource "aws_default_vpc" "this" {
 
   enable_dns_support   = var.default_vpc_enable_dns_support
   enable_dns_hostnames = var.default_vpc_enable_dns_hostnames
-  enable_classiclink   = var.default_vpc_enable_classiclink
-
+  
   tags = merge(
     {
       "Name" = format("%s", var.default_vpc_name)

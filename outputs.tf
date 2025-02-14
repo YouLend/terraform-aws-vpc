@@ -310,7 +310,8 @@ output "database_ipv6_egress_route_id" {
 
 output "private_nat_gateway_route_ids" {
   description = "List of IDs of the private nat gateway route."
-  value       = aws_route.private_nat_gateway[*].id
+  value       = [for r in aws_route.private_nat_gateway : r.id]
+
 }
 
 output "private_ipv6_egress_route_ids" {
@@ -320,12 +321,14 @@ output "private_ipv6_egress_route_ids" {
 
 output "private_route_table_association_ids" {
   description = "List of IDs of the private route table association"
-  value       = aws_route_table_association.private[*].id
+  value       = values(aws_route_table_association.private)[*].id
+
 }
 
 output "database_route_table_association_ids" {
   description = "List of IDs of the database route table association"
-  value       = aws_route_table_association.database[*].id
+  value       = values(aws_route_table_association.database)[*].id
+
 }
 
 output "redshift_route_table_association_ids" {
@@ -365,8 +368,10 @@ output "nat_public_ips" {
 
 output "natgw_ids" {
   description = "List of NAT Gateway IDs"
-  value       = aws_nat_gateway.this[*].id
+  value       = [for ngw in aws_nat_gateway.this : ngw.id]
+
 }
+
 
 output "igw_id" {
   description = "The ID of the Internet Gateway"
