@@ -1437,37 +1437,30 @@ resource "aws_route" "private_eks_ipv6_egress_green" {
 ##########################
 # Route table association
 ##########################
-resource "aws_route_table_association" "private" {
-  # Create a map where each subnet ID is associated with a route table ID
-  for_each = {
-    for idx, subnet_id in aws_subnet.private[*].id : subnet_id => aws_route_table.private[var.single_nat_gateway ? 0 : idx].id
-  }
-  subnet_id      = each.key
-  route_table_id = each.value
 
+resource "aws_route_table_association" "private" {
+  for_each = { for idx, subnet_id in aws_subnet.private[*].id : subnet_id => idx }
+ 
+  subnet_id      = each.key
+  route_table_id = aws_route_table.private[var.single_nat_gateway ? 0 : min(each.value, length(aws_route_table.private) - 1)].id
 }
 
 resource "aws_route_table_association" "private_eks_blue" {
   # Create a map where each subnet ID is associated with a route table ID
-  for_each = {
-    for idx, subnet_id in aws_subnet.private_eks_blue[*].id : subnet_id => aws_route_table.private[var.single_nat_gateway ? 0 : idx].id
-  }
-
+  for_each = { for idx, subnet_id in aws_subnet.private_eks_blue[*].id : subnet_id =>  idx}
+ 
   subnet_id      = each.key
-  route_table_id = each.value
-
+  route_table_id = aws_route_table.private_eks_blue[var.single_nat_gateway ? 0 : min(each.value, length(aws_route_table.private) - 1)].id
 }
 
 
 resource "aws_route_table_association" "private_eks_green" {
   # Create a map where each subnet ID is associated with a route table ID
-  for_each = {
-    for idx, subnet_id in aws_subnet.private_eks_green[*].id : subnet_id => aws_route_table.private[var.single_nat_gateway ? 0 : idx].id
-  }
-
+ 
+  for_each = { for idx, subnet_id in aws_subnet.private_eks_green[*].id : subnet_id =>  idx}
   subnet_id      = each.key
-  route_table_id = each.value
-
+  route_table_id = aws_route_table.private_eks_green[var.single_nat_gateway ? 0 : min(each.value, length(aws_route_table.private) - 1)].id
+  
 }
 resource "aws_route_table_association" "database" {
   for_each = {
