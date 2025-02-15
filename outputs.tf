@@ -1518,3 +1518,7 @@ output "name" {
   description = "The name of the VPC specified as argument to this module"
   value       = var.name
 }
+
+output "nat_gateway_details" {
+  value = local.nat_gateway_details
+}
