@@ -1465,15 +1465,17 @@ resource "aws_route_table_association" "private_eks_green" {
 
 resource "aws_route_table_association" "database" {
   for_each = {
-    for idx, subnet_id in aws_subnet.database[*].id : subnet_id => coalescelist(
-      aws_route_table.database[*].id, 
-      aws_route_table.private[*].id
-    )[min(
-      var.create_database_subnet_route_table ? 
-      (var.single_nat_gateway || var.create_database_internet_gateway_route ? 0 : idx) 
-      : idx, 
-      length(coalescelist(aws_route_table.database[*].id, aws_route_table.private[*].id)) - 1
-    )]
+    for idx, subnet_id in try(aws_subnet.database[*].id, []) : subnet_id => try(
+      coalescelist(
+        aws_route_table.database[*].id, 
+        aws_route_table.private[*].id
+      )[min(
+        var.create_database_subnet_route_table ? 
+        (var.single_nat_gateway || var.create_database_internet_gateway_route ? 0 : idx) 
+        : idx, 
+        length(coalescelist(aws_route_table.database[*].id, aws_route_table.private[*].id)) - 1
+      )], 
+    null)
   }
  
   subnet_id      = each.key
