@@ -1397,7 +1397,7 @@ resource "aws_nat_gateway" "this" {
 resource "aws_route" "private_nat_gateway" {
   for_each = var.create_vpc && var.enable_nat_gateway ? local.nat_gateway_details : {}
 
-  route_table_id         = aws_route_table.private[0].id  // Consider dynamic selection if multiple route tables are used
+  route_table_id         = aws_route_table.private[each.key].id  // Consider dynamic selection if multiple route tables are used
   destination_cidr_block = "0.0.0.0/0"
   nat_gateway_id         = aws_nat_gateway.this[each.key].id
 
