@@ -1450,7 +1450,7 @@ resource "aws_route_table_association" "private_eks_blue" {
   for_each = { for idx, subnet_id in aws_subnet.private_eks_blue[*].id : subnet_id =>  idx}
  
   subnet_id      = each.key
-  route_table_id = aws_route_table.private_eks_blue[var.single_nat_gateway ? 0 : min(each.value, length(aws_route_table.private) - 1)].id
+  route_table_id = aws_route_table.private[var.single_nat_gateway ? 0 : min(each.value, length(aws_route_table.private) - 1)].id
 }
 
 
@@ -1459,7 +1459,7 @@ resource "aws_route_table_association" "private_eks_green" {
  
   for_each = { for idx, subnet_id in aws_subnet.private_eks_green[*].id : subnet_id =>  idx}
   subnet_id      = each.key
-  route_table_id = aws_route_table.private_eks_green[var.single_nat_gateway ? 0 : min(each.value, length(aws_route_table.private) - 1)].id
+  route_table_id = aws_route_table.private[var.single_nat_gateway ? 0 : min(each.value, length(aws_route_table.private) - 1)].id
   
 }
 resource "aws_route_table_association" "database" {
