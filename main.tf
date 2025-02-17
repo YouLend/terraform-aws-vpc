@@ -18,7 +18,11 @@ locals {
     ),
     0,
   )
+existing_nat_gateway_ip = var.reuse_nat_ips ? data.aws_eip.existing.id : null
 
+  nat_gateway_ips = merge(
+    { "us-east-1a" = local.existing_nat_gateway_ip }, # Auto-detected EIP
+    zipmap(var.azs, var.reuse_nat_ips ? var.external_nat_ip_ids : aws_eip.nat.*.id) # New NAT EIPs
   vpce_tags = merge(
     var.tags,
     var.vpc_endpoint_tags,
@@ -1365,33 +1369,45 @@ resource "aws_eip" "nat" {
     var.nat_eip_tags,
   )
 }
+data "aws_nat_gateway" "existing" {
+  filter {
+    name   = "subnet-id"
+    values = [element(aws_subnet.public.*.id, 0)] # Ensure correct AZ match
+  }
 
+  filter {
+    name   = "state"
+    values = ["available"]
+  }
+}
+data "aws_eip" "existing" {
+  filter {
+    name   = "association-id"
+    values = [data.aws_nat_gateway.existing.nat_gateway_id]
+  }
+}
 resource "aws_nat_gateway" "this" {
-  count = var.create_vpc && var.enable_nat_gateway ? local.nat_gateway_count : 0
+  for_each = { for idx, az in var.azs : az => idx if var.enable_nat_gateway }
 
-  allocation_id = element(
-    local.nat_gateway_ips,
-    var.single_nat_gateway ? 0 : count.index,
-  )
-  subnet_id = element(
-    aws_subnet.public.*.id,
-    var.single_nat_gateway ? 0 : count.index,
-  )
+  allocation_id = local.nat_gateway_ips[each.key]
+  subnet_id     = aws_subnet.public[each.key].id
 
   tags = merge(
     {
-      "Name" = format(
-        "%s-%s",
-        var.name,
-        element(var.azs, var.single_nat_gateway ? 0 : count.index),
-      )
+      "Name" = format("%s-%s", var.name, each.key)
     },
     var.tags,
     var.nat_gateway_tags,
   )
 
+  lifecycle {
+    ignore_changes = [subnet_id]
+  }
+
   depends_on = [aws_internet_gateway.this]
 }
+
+
 
 resource "aws_route" "private_nat_gateway" {
   count = var.create_vpc && var.enable_nat_gateway ? local.nat_gateway_count : 0
