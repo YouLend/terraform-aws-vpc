@@ -1379,7 +1379,7 @@ data "aws_nat_gateway" "existing" {
 data "aws_eip" "existing" {
   filter {
     name   = "association-id"
-    values = [data.aws_nat_gateway.existing.nat_gateway_id]
+    values = [data.aws_nat_gateway.existing.id]
   }
 }
 resource "aws_nat_gateway" "this" {
