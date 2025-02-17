@@ -363,6 +363,7 @@ output "nat_public_ips" {
     value       = var.reuse_nat_ips ? var.external_nat_ips : values(aws_eip.nat)[*].public_ip
 }
 
+
 output "natgw_ids" {
   description = "List of NAT Gateway IDs"
   value       =  values(aws_nat_gateway.this)[*].id
