@@ -1350,10 +1350,8 @@ resource "aws_network_acl_rule" "elasticache_outbound" {
 #
 # but then when count of aws_eip.nat.*.id is zero, this would throw a resource not found error on aws_eip.nat.*.id.
 locals {
-  nat_gateway_ips = split(
-    ",",
-    var.reuse_nat_ips ? join(",", var.external_nat_ip_ids) : join(",", aws_eip.nat.*.id),
-  )
+nat_gateway_ips = var.reuse_nat_ips ? var.external_nat_ip_ids : values(aws_eip.nat)[*].id
+
 }
 
 resource "aws_eip" "nat" {
