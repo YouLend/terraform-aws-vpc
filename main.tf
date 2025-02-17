@@ -19,33 +19,31 @@ locals {
     0,
   )
 existing_nat_gateway_ip = var.reuse_nat_ips ? data.aws_eip.existing.id : null
-
-  nat_gateway_ips = merge(
-    { "us-east-1a" = local.existing_nat_gateway_ip }, # Auto-detected EIP
-    zipmap(var.azs, var.reuse_nat_ips ? var.external_nat_ip_ids : aws_eip.nat.*.id) # New NAT EIPs
-  )  
+   nat_gateway_ips = merge(
+    { data.aws_nat_gateway.existing.availability_zone => data.aws_eip.existing.id }, # Preserve existing NAT Gateway's EIP
+    zipmap(var.new_nat_azs, var.reuse_nat_ips ? var.external_nat_ip_ids : aws_eip.nat.*.id) # Assign new NAT EIPs
+  )
+ 
   vpce_tags = merge(
     var.tags,
     var.vpc_endpoint_tags,
   )
 }
-data "aws_region" "current" {}
+data "aws_eip" "existing" {
+  filter {
+    name   = "association-id"
+    values = [data.aws_nat_gateway.existing.id] # Get EIP for the existing NAT
+  }
+}
 data "aws_nat_gateway" "existing" {
   filter {
     name   = "vpc-id"
-    values = [local.vpc_id]
+    values = [local.vpc_id] # Fetch from current VPC
   }
 
   filter {
     name   = "state"
     values = ["available"]
-  }
-}
-
-data "aws_eip" "existing" {
-  filter {
-    name   = "association-id"
-    values = [data.aws_nat_gateway.existing.id]
   }
 }
 
@@ -1388,8 +1386,8 @@ resource "aws_eip" "nat" {
 resource "aws_nat_gateway" "this" {
   for_each = { for idx, az in var.azs : az => idx if var.enable_nat_gateway }
 
-  allocation_id = local.nat_gateway_ips[each.key]
-  subnet_id     = aws_subnet.public[each.key].id
+  allocation_id = local.nat_gateway_ips[each.key] # Uses dynamically fetched EIPs
+  subnet_id     = aws_subnet.public[each.key].id  # Ensures correct subnet assignment
 
   tags = merge(
     {
@@ -1400,11 +1398,12 @@ resource "aws_nat_gateway" "this" {
   )
 
   lifecycle {
-    ignore_changes = [subnet_id]
+    ignore_changes = [subnet_id] # Prevent Terraform from replacing the existing NAT due to subnet updates
   }
 
   depends_on = [aws_internet_gateway.this]
 }
+
 
 resource "aws_route" "private_nat_gateway" {
   count = var.create_vpc && var.enable_nat_gateway ? local.nat_gateway_count : 0
