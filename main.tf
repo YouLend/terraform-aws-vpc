@@ -40,14 +40,21 @@ data "aws_eip" "existing" {
 data "aws_nat_gateway" "existing" {
   filter {
     name   = "vpc-id"
-    values = [local.vpc_id] # Fetch from current VPC
+    values = [local.vpc_id]
   }
 
   filter {
     name   = "state"
     values = ["available"]
   }
+
+  filter {
+    name   = "subnet-id"
+    values = [element(aws_subnet.public.*.id, 0)] # Ensure this is the correct subnet
+  }
 }
+
+
 variable "new_nat_azs" {
   description = "List of availability zones where new NAT Gateways should be created"
   type        = list(string)
