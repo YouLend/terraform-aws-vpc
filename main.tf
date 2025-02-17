@@ -18,14 +18,14 @@ locals {
     ),
     0,
   )
-  existing_nat_az  = data.aws_nat_gateway.existing.availability_zone
-  existing_nat_eip = data.aws_eip.existing.id
+
+existing_nat_subnet  = data.aws_nat_gateway.existing.subnet_id # Correct attribute
+  existing_nat_eip     = data.aws_eip.existing.id
 
   nat_gateway_ips = merge(
-    { local.existing_nat_az = local.existing_nat_eip }, # Preserve existing NAT Gateway's EIP
+    { local.existing_nat_subnet = local.existing_nat_eip }, # Preserve existing NAT Gateway's EIP
     zipmap(var.new_nat_azs, var.reuse_nat_ips ? var.external_nat_ip_ids : aws_eip.nat.*.id) # Assign new NAT EIPs
   )
-
   vpce_tags = merge(
     var.tags,
     var.vpc_endpoint_tags,
