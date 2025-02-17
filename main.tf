@@ -23,6 +23,7 @@ existing_nat_gateway_ip = var.reuse_nat_ips ? data.aws_eip.existing.id : null
   nat_gateway_ips = merge(
     { "us-east-1a" = local.existing_nat_gateway_ip }, # Auto-detected EIP
     zipmap(var.azs, var.reuse_nat_ips ? var.external_nat_ip_ids : aws_eip.nat.*.id) # New NAT EIPs
+  )  
   vpce_tags = merge(
     var.tags,
     var.vpc_endpoint_tags,
