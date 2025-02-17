@@ -18,47 +18,11 @@ locals {
     ),
     0,
   )
-existing_nat_subnet  = data.aws_nat_gateway.existing.subnet_id  # Get existing NAT Gateway subnet
-  existing_nat_eip     = data.aws_eip.existing.id                 # Get existing NAT Gateway EIP
 
-  nat_gateway_ips = merge(
-    tomap({ tostring(local.existing_nat_subnet) = local.existing_nat_eip }), # Ensure key is a valid string
-    zipmap(var.new_nat_azs, var.reuse_nat_ips ? var.external_nat_ip_ids : aws_eip.nat.*.id) # Assign new NAT EIPs
-  )
- 
   vpce_tags = merge(
     var.tags,
     var.vpc_endpoint_tags,
   )
-}
-data "aws_eip" "existing" {
-  filter {
-    name   = "association-id"
-    values = [data.aws_nat_gateway.existing.id] # Get EIP for the existing NAT
-  }
-}
-data "aws_nat_gateway" "existing" {
-  filter {
-    name   = "vpc-id"
-    values = [local.vpc_id]
-  }
-
-  filter {
-    name   = "state"
-    values = ["available"]
-  }
-
-  filter {
-    name   = "subnet-id"
-    values = [element(aws_subnet.public.*.id, 0)] # Ensure this is the correct subnet
-  }
-}
-
-
-variable "new_nat_azs" {
-  description = "List of availability zones where new NAT Gateways should be created"
-  type        = list(string)
-  default     = [] # Default to an empty list to prevent errors
 }
 
 ######
@@ -1377,7 +1341,12 @@ resource "aws_network_acl_rule" "elasticache_outbound" {
 #    nat_gateway_ips = var.reuse_nat_ips ? var.external_nat_ip_ids : aws_eip.nat.*.id
 #
 # but then when count of aws_eip.nat.*.id is zero, this would throw a resource not found error on aws_eip.nat.*.id.
-
+locals {
+  nat_gateway_ips = split(
+    ",",
+    var.reuse_nat_ips ? join(",", var.external_nat_ip_ids) : join(",", aws_eip.nat.*.id),
+  )
+}
 
 resource "aws_eip" "nat" {
   count = var.create_vpc && var.enable_nat_gateway && false == var.reuse_nat_ips ? local.nat_gateway_count : 0
@@ -1396,28 +1365,32 @@ resource "aws_eip" "nat" {
     var.nat_eip_tags,
   )
 }
-
 resource "aws_nat_gateway" "this" {
-  for_each = { for idx, az in var.azs : az => idx if var.enable_nat_gateway }
+  for_each = var.create_vpc && var.enable_nat_gateway ? { for idx, az in var.azs : idx => az } : {}
 
-  allocation_id = local.nat_gateway_ips[each.key] # Uses dynamically fetched EIPs
-  subnet_id     = aws_subnet.public[each.key].id  # Ensures correct subnet assignment
+  allocation_id = element(
+    local.nat_gateway_ips,
+    var.single_nat_gateway ? 0 : each.key,
+  )
+  subnet_id = element(
+    aws_subnet.public.*.id,
+    var.single_nat_gateway ? 0 : each.key,
+  )
 
   tags = merge(
     {
-      "Name" = format("%s-%s", var.name, each.key)
+      "Name" = format(
+        "%s-%s",
+        var.name,
+        element(var.azs, var.single_nat_gateway ? 0 : each.key),
+      )
     },
     var.tags,
     var.nat_gateway_tags,
   )
 
-  lifecycle {
-    ignore_changes = [subnet_id] # Prevent Terraform from replacing the existing NAT due to subnet updates
-  }
-
   depends_on = [aws_internet_gateway.this]
 }
-
 
 resource "aws_route" "private_nat_gateway" {
   count = var.create_vpc && var.enable_nat_gateway ? local.nat_gateway_count : 0
