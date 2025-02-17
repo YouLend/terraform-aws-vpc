@@ -18,14 +18,14 @@ locals {
     ),
     0,
   )
-  existing_nat_subnet  = data.aws_nat_gateway.existing.subnet_id  # Get existing NAT Gateway subnet
+
+existing_nat_subnet  = data.aws_nat_gateway.existing.subnet_id  # Get existing NAT Gateway subnet
   existing_nat_eip     = data.aws_eip.existing.id                 # Get existing NAT Gateway EIP
 
   nat_gateway_ips = merge(
-    tomap({ local.existing_nat_subnet = local.existing_nat_eip }), # Corrected syntax (`=` instead of `=>`)
+    map(local.existing_nat_subnet, local.existing_nat_eip), # Corrected syntax using `map()`
     zipmap(var.new_nat_azs, var.reuse_nat_ips ? var.external_nat_ip_ids : aws_eip.nat.*.id) # Assign new NAT EIPs
   )
-
   vpce_tags = merge(
     var.tags,
     var.vpc_endpoint_tags,
