@@ -29,6 +29,25 @@ existing_nat_gateway_ip = var.reuse_nat_ips ? data.aws_eip.existing.id : null
     var.vpc_endpoint_tags,
   )
 }
+data "aws_region" "current" {}
+data "aws_nat_gateway" "existing" {
+  filter {
+    name   = "vpc-id"
+    values = [local.vpc_id]
+  }
+
+  filter {
+    name   = "state"
+    values = ["available"]
+  }
+}
+
+data "aws_eip" "existing" {
+  filter {
+    name   = "association-id"
+    values = [data.aws_nat_gateway.existing.id]
+  }
+}
 
 ######
 # VPC
@@ -1365,23 +1384,7 @@ resource "aws_eip" "nat" {
     var.nat_eip_tags,
   )
 }
-data "aws_nat_gateway" "existing" {
-  filter {
-    name   = "subnet-id"
-    values = [element(aws_subnet.public.*.id, 0)] # Ensure correct AZ match
-  }
 
-  filter {
-    name   = "state"
-    values = ["available"]
-  }
-}
-data "aws_eip" "existing" {
-  filter {
-    name   = "association-id"
-    values = [data.aws_nat_gateway.existing.id]
-  }
-}
 resource "aws_nat_gateway" "this" {
   for_each = { for idx, az in var.azs : az => idx if var.enable_nat_gateway }
 
@@ -1402,8 +1405,6 @@ resource "aws_nat_gateway" "this" {
 
   depends_on = [aws_internet_gateway.this]
 }
-
-
 
 resource "aws_route" "private_nat_gateway" {
   count = var.create_vpc && var.enable_nat_gateway ? local.nat_gateway_count : 0
