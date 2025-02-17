@@ -1357,26 +1357,22 @@ locals {
 }
 
 resource "aws_eip" "nat" {
-  count = var.create_vpc && var.enable_nat_gateway && false == var.reuse_nat_ips ? local.nat_gateway_count : 0
+  for_each = var.create_vpc && var.enable_nat_gateway && !var.reuse_nat_ips ? local.nat_gateways : {}
 
   domain = "vpc"
 
   tags = merge(
     {
-      "Name" = format(
-        "%s-%s",
-        var.name,
-        element(var.azs, var.single_nat_gateway ? 0 : count.index),
-      )
+      "Name" = format("%s-%s", var.name, each.value)
     },
     var.tags,
-    var.nat_eip_tags,
+    var.nat_eip_tags
   )
 }
 resource "aws_nat_gateway" "this" {
   for_each = local.nat_gateways
 
-  allocation_id = element(local.nat_gateway_ips, each.key)
+  allocation_id = aws_eip.nat[each.key].id
   subnet_id     = element(aws_subnet.public.*.id, each.key)
 
   tags = merge(
@@ -1387,6 +1383,7 @@ resource "aws_nat_gateway" "this" {
 
   depends_on = [aws_internet_gateway.this]
 }
+
 
 resource "aws_route" "private_nat_gateway" {
   for_each = local.private_routes
