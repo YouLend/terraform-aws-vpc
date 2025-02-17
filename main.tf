@@ -8,14 +8,10 @@ locals {
     length(var.private_eks_subnets_green)
   )
   nat_gateway_count = var.single_nat_gateway ? 1 : var.one_nat_gateway_per_az ? length(var.azs) : local.max_subnet_length
-
-  private_routes = {
-    for idx, az in var.azs :
-    tostring(idx) => {
-      route_table_id = element(aws_route_table.private.*.id, idx)
-      nat_gateway_id = lookup(aws_nat_gateway.this, tostring(idx), aws_nat_gateway.this["0"].id)
-    }
-  }
+  private_routes = { for idx, az in var.azs : idx => {
+    route_table_id = element(aws_route_table.private.*.id, idx)
+    nat_gateway_id = aws_nat_gateway.this[tostring(idx)].id
+   } } 
   nat_gateways = (
     var.one_nat_gateway_per_az ? 
       { for idx, az in var.azs : tostring(idx) => az } : 
