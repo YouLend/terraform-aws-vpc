@@ -1369,7 +1369,7 @@ resource "aws_eip" "nat" {
 resource "aws_nat_gateway" "this" {
   for_each = local.nat_gateways
 
-  allocation_id = var.reuse_nat_ips ? var.external_nat_ip_ids[each.key] : aws_eip.nat[each.key].id
+  allocation_id = lookup(var.external_nat_ip_ids, each.key, aws_eip.nat[each.key].id)
   subnet_id     = element(aws_subnet.public.*.id, each.key)
 
   tags = merge(
