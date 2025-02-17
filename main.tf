@@ -8,7 +8,10 @@ locals {
     length(var.private_eks_subnets_green)
   )
   nat_gateway_count = var.single_nat_gateway ? 1 : var.one_nat_gateway_per_az ? length(var.azs) : local.max_subnet_length
-
+  private_routes = { for idx, az in var.azs : idx => {
+    route_table_id = element(aws_route_table.private.*.id, idx)
+    nat_gateway_id = aws_nat_gateway.this[idx].id
+  } }
   nat_gateways = (
     var.one_nat_gateway_per_az ? 
       { for idx, az in var.azs : idx => az } : 
@@ -1386,16 +1389,17 @@ resource "aws_nat_gateway" "this" {
 }
 
 resource "aws_route" "private_nat_gateway" {
-  count = var.create_vpc && var.enable_nat_gateway ? local.nat_gateway_count : 0
+  for_each = local.private_routes
 
-  route_table_id         = element(aws_route_table.private.*.id, count.index)
+  route_table_id         = each.value.route_table_id
   destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = element(aws_nat_gateway.this.*.id, count.index)
+  nat_gateway_id         = each.value.nat_gateway_id
 
   timeouts {
     create = "5m"
   }
 }
+
 
 resource "aws_route" "private_ipv6_egress" {
   count = var.create_vpc && var.create_egress_only_igw && var.enable_ipv6 ? length(var.private_subnets) : 0
