@@ -18,12 +18,11 @@ locals {
     ),
     0,
   )
-
-existing_nat_subnet  = data.aws_nat_gateway.existing.subnet_id # Correct attribute
-  existing_nat_eip     = data.aws_eip.existing.id
+existing_nat_subnet  = data.aws_nat_gateway.existing.subnet_id # Get existing NAT Gateway subnet
+  existing_nat_eip     = data.aws_eip.existing.id # Get existing NAT Gateway EIP
 
   nat_gateway_ips = merge(
-    { local.existing_nat_subnet = local.existing_nat_eip }, # Preserve existing NAT Gateway's EIP
+    { local.existing_nat_subnet = local.existing_nat_eip }, # Preserve existing NAT
     zipmap(var.new_nat_azs, var.reuse_nat_ips ? var.external_nat_ip_ids : aws_eip.nat.*.id) # Assign new NAT EIPs
   )
   vpce_tags = merge(
@@ -47,6 +46,11 @@ data "aws_nat_gateway" "existing" {
     name   = "state"
     values = ["available"]
   }
+}
+variable "new_nat_azs" {
+  description = "List of availability zones where new NAT Gateways should be created"
+  type        = list(string)
+  default     = [] # Default to an empty list to prevent errors
 }
 
 ######
