@@ -12,11 +12,11 @@ locals {
     route_table_id = element(aws_route_table.private.*.id, idx)
     nat_gateway_id = aws_nat_gateway.this[idx].id
   } }
-
-  nat_gateways = var.one_nat_gateway_per_az ? 
-    { for idx, az in var.azs : idx => az } : 
-    (var.single_nat_gateway ? { 0 = "single" } : { for idx in range(local.max_subnet_length) : idx => idx })
-
+  nat_gateways = (
+    var.one_nat_gateway_per_az ? 
+      { for idx, az in var.azs : tostring(idx) => az } : 
+      (var.single_nat_gateway ? { "0" = "single" } : { for idx in range(local.max_subnet_length) : tostring(idx) => idx })
+  )
  
   # Use `local.vpc_id` to give a hint to Terraform that subnets should be deleted before secondary CIDR blocks can be free!
   vpc_id = element(
