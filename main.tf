@@ -1382,14 +1382,15 @@ resource "aws_nat_gateway" "this" {
 resource "aws_route" "private_nat_gateway" {
   count = var.create_vpc && var.enable_nat_gateway ? local.nat_gateway_count : 0
 
-  route_table_id         = element(aws_route_table.private.*.id, count.index)
+  route_table_id         = element(aws_route_table.private[*].id, count.index)
   destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = element(aws_nat_gateway.this.*.id, count.index)
+  nat_gateway_id         = values(aws_nat_gateway.this)[count.index].id
 
   timeouts {
     create = "5m"
   }
 }
+
 
 resource "aws_route" "private_ipv6_egress" {
   count = var.create_vpc && var.create_egress_only_igw && var.enable_ipv6 ? length(var.private_subnets) : 0
