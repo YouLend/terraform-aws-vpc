@@ -355,17 +355,19 @@ output "public_route_table_association_ids" {
 
 output "nat_ids" {
   description = "List of allocation ID of Elastic IPs created for AWS NAT Gateway"
-  value       = aws_eip.nat.*.id
+  value       = values(aws_eip.nat)[*].id
 }
 
 output "nat_public_ips" {
   description = "List of public Elastic IPs created for AWS NAT Gateway"
-  value       = var.reuse_nat_ips ? var.external_nat_ips : aws_eip.nat.*.public_ip
+ # value       = var.reuse_nat_ips ? var.external_nat_ips : aws_eip.nat.*.public_ip
+  value       = var.reuse_nat_ips ? var.external_nat_ips : [for eip in values(aws_eip.nat) : eip.public_ip]
+
 }
 
 output "natgw_ids" {
   description = "List of NAT Gateway IDs"
-  value       = aws_nat_gateway.this.*.id
+  value       = value = values(aws_nat_gateway.this)[*].id
 }
 
 output "igw_id" {
