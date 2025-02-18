@@ -1373,19 +1373,29 @@ resource "aws_eip" "nat" {
   )
 }
 resource "aws_nat_gateway" "this" {
-  for_each = local.nat_gateways
-    allocation_id = var.reuse_nat_ips && length(var.external_nat_ip_ids) > 0 ? local.external_nat_ip_map[each.key] : aws_eip.nat[each.key].id
+  for_each = var.create_vpc && var.enable_nat_gateway ? 
+    (var.single_nat_gateway ? { "0" = var.azs[0] } : { for idx, az in var.azs : tostring(idx) => az }) : {}
 
-   subnet_id     = element(aws_subnet.public.*.id, each.key)
+  allocation_id = var.single_nat_gateway
+    ? local.nat_gateway_ips[0]
+    : local.nat_gateway_ips[tonumber(each.key)]
+
+  subnet_id = var.single_nat_gateway
+    ? aws_subnet.public[0].id
+    : aws_subnet.public[tonumber(each.key)].id
 
   tags = merge(
-    { "Name" = format("%s-%s", var.name, each.value) },
+    {
+      "Name" = format("%s-%s", var.name, each.key)
+    },
     var.tags,
-    var.nat_gateway_tags
+    var.nat_gateway_tags,
   )
 
   depends_on = [aws_internet_gateway.this]
 }
+
+
 resource "aws_route" "private_nat_gateway" {
   for_each = local.private_routes
 
