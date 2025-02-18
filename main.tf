@@ -1464,18 +1464,16 @@ resource "aws_route_table_association" "private_eks_green" {
 }
 
 
+
 resource "aws_route_table_association" "database" {
-  for_each = var.create_vpc && length(var.database_subnets) > 0 ? { for idx, az in var.database_subnets : tostring(idx) => az } : {}
+  count = var.create_vpc && length(var.database_subnets) > 0 ? length(var.database_subnets) : 0
 
-  subnet_id      = aws_subnet.database[each.key].id
-  route_table_id = lookup(
-  { for k, rt in aws_route_table.database : k => rt.id },
-  each.key,
-  lookup({ for i, rt in aws_route_table.private : tostring(i) => rt.id }, each.key, null)
-)
-
+  subnet_id = element(aws_subnet.database.*.id, count.index)
+  route_table_id = element(
+    coalescelist(aws_route_table.database.*.id, aws_route_table.private.*.id),
+    var.create_database_subnet_route_table ? var.single_nat_gateway || var.create_database_internet_gateway_route ? 0 : count.index : count.index,
+  )
 }
-
 resource "aws_route_table_association" "redshift" {
   count = var.create_vpc && length(var.redshift_subnets) > 0 && false == var.enable_public_redshift ? length(var.redshift_subnets) : 0
 
