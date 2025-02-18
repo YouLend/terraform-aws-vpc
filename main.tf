@@ -1344,9 +1344,11 @@ resource "aws_network_acl_rule" "elasticache_outbound" {
 #
 # but then when count of aws_eip.nat.*.id is zero, this would throw a resource not found error on aws_eip.nat.*.id.
 
+
 locals {
-  nat_gateway_ips = var.reuse_nat_ips ? var.external_nat_ip_ids : aws_eip.nat.*.id
+  nat_gateway_ips = var.reuse_nat_ips ? var.external_nat_ip_ids : { for k, v in aws_eip.nat : k => v.id }
 }
+
 resource "aws_eip" "nat" {
   for_each = var.create_vpc && var.enable_nat_gateway && !var.reuse_nat_ips ? {
     for i, az in var.azs :
@@ -1368,6 +1370,7 @@ resource "aws_eip" "nat" {
     var.nat_eip_tags,
   )
 }
+
 resource "aws_nat_gateway" "this" {
   for_each = var.create_vpc && var.enable_nat_gateway ? {
     for i, az in var.azs :
@@ -1375,7 +1378,7 @@ resource "aws_nat_gateway" "this" {
     if var.single_nat_gateway ? i == 0 : var.one_nat_gateway_per_az || i < local.max_subnet_length
   } : {}
 
-  allocation_id = local.nat_gateway_ips[each.key]
+  allocation_id = lookup(local.nat_gateway_ips, each.key, null)
   subnet_id     = aws_subnet.public[each.key].id
 
   tags = merge(
@@ -1392,6 +1395,7 @@ resource "aws_nat_gateway" "this" {
 
   depends_on = [aws_internet_gateway.this]
 }
+
 resource "aws_route" "private_nat_gateway" {
   count = var.create_vpc && var.enable_nat_gateway ? local.nat_gateway_count : 0
 
