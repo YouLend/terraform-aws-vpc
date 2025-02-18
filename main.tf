@@ -284,7 +284,8 @@ resource "aws_route_table" "private" {
 #################
 
 resource "aws_route_table" "database" {
-  for_each = var.single_nat_gateway || var.create_database_internet_gateway_route ? { "0" = "single" } : { for idx, az in var.database_subnets : tostring(idx) => az }
+  for_each = var.create_vpc && var.create_database_subnet_route_table && length(var.database_subnets) > 0 ? 
+    (var.single_nat_gateway || var.create_database_internet_gateway_route ? { "0" = "single" } : { for idx, az in var.database_subnets : tostring(idx) => az }) : {}
 
   vpc_id = local.vpc_id
 
@@ -1456,14 +1457,12 @@ resource "aws_route_table_association" "private_eks_green" {
   )
 }
 
-resource "aws_route_table_association" "database" {
-  count = var.create_vpc && length(var.database_subnets) > 0 ? length(var.database_subnets) : 0
 
-  subnet_id = element(aws_subnet.database.*.id, count.index)
-  route_table_id = element(
-    coalescelist(aws_route_table.database.*.id, aws_route_table.private.*.id),
-    var.create_database_subnet_route_table ? var.single_nat_gateway || var.create_database_internet_gateway_route ? 0 : count.index : count.index,
-  )
+resource "aws_route_table_association" "database" {
+  for_each = var.create_vpc && length(var.database_subnets) > 0 ? { for idx, az in var.database_subnets : tostring(idx) => az } : {}
+
+  subnet_id      = aws_subnet.database[each.key].id
+  route_table_id = lookup(aws_route_table.database, each.key, aws_route_table.private[each.key].id)
 }
 
 resource "aws_route_table_association" "redshift" {
