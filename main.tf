@@ -7,8 +7,11 @@ locals {
     length(var.private_eks_subnets_blue),
     length(var.private_eks_subnets_green)
   )
-  nat_gateway_count = var.single_nat_gateway ? 1 : (var.one_nat_gateway_per_az ? length(var.azs) : local.max_subnet_length)
-   nat_gateway_ips = var.reuse_nat_ips ? var.external_nat_ip_ids : aws_eip.nat.*.id
+  nat_gateway_ips = var.reuse_nat_ips ? var.external_nat_ip_ids : aws_eip.nat[*].id
+
+  nat_gateway_count = var.single_nat_gateway ? 1 
+    : (var.one_nat_gateway_per_az ? length(var.azs) : local.max_subnet_length)
+    
   # Use `local.vpc_id` to give a hint to Terraform that subnets should be deleted before secondary CIDR blocks can be free!
   vpc_id = element(
     concat(
@@ -1343,8 +1346,10 @@ resource "aws_network_acl_rule" "elasticache_outbound" {
 # but then when count of aws_eip.nat.*.id is zero, this would throw a resource not found error on aws_eip.nat.*.id.
 
 
+
 resource "aws_eip" "nat" {
-  for_each = var.create_vpc && var.enable_nat_gateway && !var.reuse_nat_ips ? toset(var.azs) : []
+  for_each = var.create_vpc && var.enable_nat_gateway && !var.reuse_nat_ips ? 
+    (var.single_nat_gateway ? toset(["single"]) : toset(var.azs)) : {}
 
   domain = "vpc"
 
@@ -1358,7 +1363,8 @@ resource "aws_eip" "nat" {
 }
 
 resource "aws_nat_gateway" "this" {
-  for_each = var.create_vpc && var.enable_nat_gateway ? toset(var.azs) : []
+  for_each = var.create_vpc && var.enable_nat_gateway ? 
+    (var.single_nat_gateway ? toset(["single"]) : toset(var.azs)) : {}
 
   allocation_id = var.single_nat_gateway
     ? local.nat_gateway_ips[0] 
@@ -1378,6 +1384,7 @@ resource "aws_nat_gateway" "this" {
 
   depends_on = [aws_internet_gateway.this]
 }
+
 
 resource "aws_route" "private_nat_gateway" {
   count = var.create_vpc && var.enable_nat_gateway ? local.nat_gateway_count : 0
