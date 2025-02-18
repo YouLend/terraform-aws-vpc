@@ -1346,7 +1346,7 @@ resource "aws_network_acl_rule" "elasticache_outbound" {
 
 
 locals {
-  nat_gateway_ips = var.reuse_nat_ips ? var.external_nat_ip_ids : { for k, v in aws_eip.nat : k => v.id }
+   nat_gateway_ips = var.reuse_nat_ips ? var.external_nat_ip_ids : values({ for k, v in aws_eip.nat : k => v.id })
 }
 
 resource "aws_eip" "nat" {
