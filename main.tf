@@ -1393,11 +1393,11 @@ resource "aws_nat_gateway" "this" {
   depends_on = [aws_internet_gateway.this]
 }
 resource "aws_route" "private_nat_gateway" {
-  for_each = local.private_routes
+  count = var.create_vpc && var.enable_nat_gateway ? local.nat_gateway_count : 0
 
-  route_table_id         = each.value.route_table_id
+  route_table_id         = element(aws_route_table.private.*.id, count.index)
   destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = each.value.nat_gateway_id
+  nat_gateway_id         = element(aws_nat_gateway.this.*.id, count.index)
 
   timeouts {
     create = "5m"
