@@ -1468,10 +1468,9 @@ resource "aws_route_table_association" "database" {
   for_each = var.create_vpc && length(var.database_subnets) > 0 ? { for idx, az in var.database_subnets : tostring(idx) => az } : {}
 
   subnet_id      = aws_subnet.database[each.key].id
-  route_table_id = lookup(
-  { for k, rt in aws_route_table.database : k => rt.id },
-  each.key,
-  lookup({ for k, rt in aws_route_table.private : k => rt.id }, each.key, null)
+  route_table_id = try(
+  aws_route_table.database[each.key].id,
+  aws_route_table.private[each.key].id
 )
 
 }

@@ -263,11 +263,15 @@ output "private_route_table_ids" {
   value       = aws_route_table.private.*.id
 }
 
-
 output "database_route_table_ids" {
   description = "List of database route table IDs"
-  value       = length(keys(aws_route_table.database)) > 0 ? values(aws_route_table.database)[*].id : values(aws_route_table.private)[*].id
+  value       = flatten([
+    for rt in values(aws_route_table.database) : rt.id if rt.id != ""
+  ] + [
+    for rt in values(aws_route_table.private) : rt.id if rt.id != ""
+  ])
 }
+
 
 output "redshift_route_table_ids" {
   description = "List of IDs of redshift route tables"
