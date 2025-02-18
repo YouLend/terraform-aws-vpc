@@ -360,8 +360,8 @@ output "nat_ids" {
 
 output "nat_public_ips" {
   description = "List of public Elastic IPs created for AWS NAT Gateway"
- # value       = var.reuse_nat_ips ? var.external_nat_ips : [for eip in values(aws_eip.nat) : eip.public_ip]
-value = [for key, eip in aws_eip.nat : eip.public_ip if contains(keys(aws_eip.nat), key)]
+  value       = var.reuse_nat_ips ? var.external_nat_ips : [for eip in values(aws_eip.nat) : eip.public_ip]
+
 }
 
 output "natgw_ids" {
