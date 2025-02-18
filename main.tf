@@ -7,17 +7,8 @@ locals {
     length(var.private_eks_subnets_blue),
     length(var.private_eks_subnets_green)
   )
-  nat_gateway_count = var.single_nat_gateway ? 1 : var.one_nat_gateway_per_az ? length(var.azs) : local.max_subnet_length
-  private_routes = { for idx, az in var.azs : idx => {
-    route_table_id = element(aws_route_table.private.*.id, idx)
-    nat_gateway_id = aws_nat_gateway.this[tostring(idx)].id
-   } } 
-  nat_gateways = (
-    var.one_nat_gateway_per_az ? 
-      { for idx, az in var.azs : tostring(idx) => az } : 
-      (var.single_nat_gateway ? { "0" = "single" } : { for idx in range(local.max_subnet_length) : tostring(idx) => idx })
-  )
- external_nat_ip_map = { for idx, ip in var.external_nat_ip_ids : tostring(idx) => ip }
+  nat_gateway_count = var.single_nat_gateway ? 1 : (var.one_nat_gateway_per_az ? length(var.azs) : local.max_subnet_length)
+   nat_gateway_ips = var.reuse_nat_ips ? var.external_nat_ip_ids : aws_eip.nat.*.id
   # Use `local.vpc_id` to give a hint to Terraform that subnets should be deleted before secondary CIDR blocks can be free!
   vpc_id = element(
     concat(
@@ -282,16 +273,8 @@ resource "aws_route_table" "private" {
 #################
 # Database routes
 #################
-
 resource "aws_route_table" "database" {
-  for_each = (
-  var.create_vpc && var.create_database_subnet_route_table && length(var.database_subnets) > 0 
-    ? (var.single_nat_gateway || var.create_database_internet_gateway_route 
-        ? { "0" = "single" } 
-        : { for idx, az in var.database_subnets : tostring(idx) => az }
-      ) 
-    : {}
-)
+  count = var.create_vpc && var.create_database_subnet_route_table && length(var.database_subnets) > 0 ? var.single_nat_gateway || var.create_database_internet_gateway_route ? 1 : length(var.database_subnets) : 0
 
   vpc_id = local.vpc_id
 
@@ -300,7 +283,7 @@ resource "aws_route_table" "database" {
       "Name" = var.single_nat_gateway || var.create_database_internet_gateway_route ? "${var.name}-${var.database_subnet_suffix}" : format(
         "%s-${var.database_subnet_suffix}-%s",
         var.name,
-        each.value,
+        element(var.azs, count.index),
       )
     },
     var.tags,
@@ -1358,50 +1341,55 @@ resource "aws_network_acl_rule" "elasticache_outbound" {
 #    nat_gateway_ips = var.reuse_nat_ips ? var.external_nat_ip_ids : aws_eip.nat.*.id
 #
 # but then when count of aws_eip.nat.*.id is zero, this would throw a resource not found error on aws_eip.nat.*.id.
-locals {
-nat_gateway_ips = var.reuse_nat_ips ? var.external_nat_ip_ids : [for k, eip in aws_eip.nat : eip.id if contains(keys(local.nat_gateways), k)]
 
-}
 
 resource "aws_eip" "nat" {
-  for_each = var.create_vpc && var.enable_nat_gateway && !var.reuse_nat_ips ? local.nat_gateways : {}
+  for_each = var.create_vpc && var.enable_nat_gateway && !var.reuse_nat_ips ? toset(var.azs) : []
 
   domain = "vpc"
 
   tags = merge(
-    { "Name" = format("%s-%s", var.name, each.value) },
+    {
+      "Name" = format("%s-%s", var.name, each.key)
+    },
     var.tags,
-    var.nat_eip_tags
+    var.nat_eip_tags,
   )
 }
-resource "aws_nat_gateway" "this" {
-  for_each = local.nat_gateways
-    allocation_id = var.reuse_nat_ips && length(var.external_nat_ip_ids) > 0 ? local.external_nat_ip_map[each.key] : aws_eip.nat[each.key].id
 
-   subnet_id     = element(aws_subnet.public.*.id, each.key)
+resource "aws_nat_gateway" "this" {
+  for_each = var.create_vpc && var.enable_nat_gateway ? toset(var.azs) : []
+
+  allocation_id = var.single_nat_gateway
+    ? local.nat_gateway_ips[0] 
+    : local.nat_gateway_ips[index(var.azs, each.key)]
+
+  subnet_id = var.single_nat_gateway
+    ? aws_subnet.public[0].id
+    : aws_subnet.public[index(var.azs, each.key)].id
 
   tags = merge(
-    { "Name" = format("%s-%s", var.name, each.value) },
+    {
+      "Name" = format("%s-%s", var.name, each.key)
+    },
     var.tags,
-    var.nat_gateway_tags
+    var.nat_gateway_tags,
   )
 
   depends_on = [aws_internet_gateway.this]
 }
 
-
 resource "aws_route" "private_nat_gateway" {
-  for_each = local.private_routes
+  count = var.create_vpc && var.enable_nat_gateway ? local.nat_gateway_count : 0
 
-  route_table_id         = each.value.route_table_id
+  route_table_id         = element(aws_route_table.private.*.id, count.index)
   destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = each.value.nat_gateway_id
+  nat_gateway_id         = element(aws_nat_gateway.this.*.id, count.index)
 
   timeouts {
     create = "5m"
   }
 }
-
 
 resource "aws_route" "private_ipv6_egress" {
   count = var.create_vpc && var.create_egress_only_igw && var.enable_ipv6 ? length(var.private_subnets) : 0
@@ -1463,8 +1451,6 @@ resource "aws_route_table_association" "private_eks_green" {
   )
 }
 
-
-
 resource "aws_route_table_association" "database" {
   count = var.create_vpc && length(var.database_subnets) > 0 ? length(var.database_subnets) : 0
 
@@ -1474,6 +1460,7 @@ resource "aws_route_table_association" "database" {
     var.create_database_subnet_route_table ? var.single_nat_gateway || var.create_database_internet_gateway_route ? 0 : count.index : count.index,
   )
 }
+
 resource "aws_route_table_association" "redshift" {
   count = var.create_vpc && length(var.redshift_subnets) > 0 && false == var.enable_public_redshift ? length(var.redshift_subnets) : 0
 
