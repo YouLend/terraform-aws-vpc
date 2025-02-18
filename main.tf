@@ -284,8 +284,14 @@ resource "aws_route_table" "private" {
 #################
 
 resource "aws_route_table" "database" {
-  for_each = var.create_vpc && var.create_database_subnet_route_table && length(var.database_subnets) > 0 ? 
-    (var.single_nat_gateway || var.create_database_internet_gateway_route ? { "0" = "single" } : { for idx, az in var.database_subnets : tostring(idx) => az }) : {}
+  for_each = (
+  var.create_vpc && var.create_database_subnet_route_table && length(var.database_subnets) > 0 
+    ? (var.single_nat_gateway || var.create_database_internet_gateway_route 
+        ? { "0" = "single" } 
+        : { for idx, az in var.database_subnets : tostring(idx) => az }
+      ) 
+    : {}
+)
 
   vpc_id = local.vpc_id
 
