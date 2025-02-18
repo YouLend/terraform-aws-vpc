@@ -1378,10 +1378,11 @@ resource "aws_nat_gateway" "this" {
   depends_on = [aws_internet_gateway.this]
 }
 
-resource "aws_route" "private_nat_gateway" {
-  count = var.create_vpc && var.enable_nat_gateway ? length(values(aws_nat_gateway.this)) : 0
 
-  route_table_id         = values(aws_route_table.private)[count.index].id
+resource "aws_route" "private_nat_gateway" {
+  count = var.create_vpc && var.enable_nat_gateway ? length(aws_nat_gateway.this) : 0
+
+  route_table_id         = aws_route_table.private[count.index].id
   destination_cidr_block = "0.0.0.0/0"
   nat_gateway_id         = values(aws_nat_gateway.this)[count.index].id
 
