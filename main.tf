@@ -280,6 +280,7 @@ resource "aws_route_table" "private" {
   )
 }
 
+
 #################
 # Database routes
 #################
@@ -1382,12 +1383,14 @@ resource "aws_nat_gateway" "this" {
 
   depends_on = [aws_internet_gateway.this]
 }
-resource "aws_route" "private_nat_gateway" {
-  for_each = local.private_routes
 
-  route_table_id         = each.value.route_table_id
+resource "aws_route" "private_nat_gateway" {
+  for_each = var.create_vpc && var.enable_nat_gateway ? 
+    { for index, az in var.azs : az => index } : {}
+
+  route_table_id         = aws_route_table.private[each.value].id
   destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = each.value.nat_gateway_id
+  nat_gateway_id         = aws_nat_gateway.this[each.value].id
 
   timeouts {
     create = "5m"
@@ -1425,15 +1428,15 @@ resource "aws_route" "private_eks_ipv6_egress_green" {
 ##########################
 # Route table association
 ##########################
-resource "aws_route_table_association" "private" {
-  count = var.create_vpc && length(var.private_subnets) > 0 ? length(var.private_subnets) : 0
+ resource "aws_route_table_association" "private" {
+  for_each = { for index, subnet in var.private_subnets : subnet => index }
 
-  subnet_id = element(aws_subnet.private.*.id, count.index)
-  route_table_id = element(
-    aws_route_table.private.*.id,
-    var.single_nat_gateway ? 0 : count.index,
-  )
+  subnet_id      = aws_subnet.private[each.value].id
+  route_table_id = aws_route_table.private[
+    var.single_nat_gateway ? 0 : floor(each.value / (length(var.private_subnets) / local.nat_gateway_count))
+  ].id
 }
+
 
 resource "aws_route_table_association" "private_eks_blue" {
   count = var.create_vpc && length(var.private_eks_subnets_blue) > 0 ? length(var.private_eks_subnets_blue) : 0
