@@ -263,7 +263,6 @@ output "private_route_table_ids" {
   value       = aws_route_table.private.*.id
 }
 
-
 output "database_route_table_ids" {
   description = "List of IDs of database route tables"
   value       = length(aws_route_table.database.*.id) > 0 ? aws_route_table.database.*.id : aws_route_table.private.*.id
@@ -311,7 +310,7 @@ output "database_ipv6_egress_route_id" {
 
 output "private_nat_gateway_route_ids" {
   description = "List of IDs of the private nat gateway route."
-  value       = values(aws_route.private_nat_gateway)[*].id
+  value       = aws_route.private_nat_gateway.*.id
 }
 
 output "private_ipv6_egress_route_ids" {
@@ -356,18 +355,17 @@ output "public_route_table_association_ids" {
 
 output "nat_ids" {
   description = "List of allocation ID of Elastic IPs created for AWS NAT Gateway"
-  value       = values(aws_eip.nat)[*].id
+  value       = aws_eip.nat.*.id
 }
 
-
 output "nat_public_ips" {
-  description = "List of public Elastic IPs assigned to NAT Gateways"
-  value       = var.reuse_nat_ips ? var.external_nat_ips : [for k in keys(aws_eip.nat) : aws_eip.nat[k].public_ip if contains(keys(aws_nat_gateway.this), k)]
- }
+  description = "List of public Elastic IPs created for AWS NAT Gateway"
+  value       = var.reuse_nat_ips ? var.external_nat_ips : aws_eip.nat.*.public_ip
+}
 
 output "natgw_ids" {
   description = "List of NAT Gateway IDs"
-  value       =  values(aws_nat_gateway.this)[*].id
+  value       = aws_nat_gateway.this.*.id
 }
 
 output "igw_id" {
