@@ -283,13 +283,14 @@ output "redshift_route_table_ids" {
   )
 }
 
-
 output "elasticache_route_table_ids" {
-  description = "List of IDs of elasticache route tables"
-  value = length(aws_route_table.elasticache) > 0 
+  description = "List of IDs of Elasticache route tables"
+  value = (
+    length(aws_route_table.elasticache) > 0 
     ? [for rt in aws_route_table.elasticache : rt.id] 
     : [for rt in aws_route_table.private : rt.id]
- }
+  )
+}
 
 output "intra_route_table_ids" {
   description = "List of IDs of intra route tables"
