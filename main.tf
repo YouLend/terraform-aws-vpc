@@ -540,39 +540,28 @@ resource "aws_subnet" "private_eks_blue" {
     ]
   }
 }
-
 resource "aws_subnet" "private_eks_green" {
-  for_each = { for idx, cidr in var.private_eks_subnets_green : idx => cidr if idx < length(var.azs) }
+  count = var.create_vpc && length(var.private_eks_subnets_green) > 0 ? length(var.private_eks_subnets_green) : 0
 
-  vpc_id        = local.vpc_id
-  cidr_block    = each.value
+  vpc_id                          = local.vpc_id
+  cidr_block                      = var.private_eks_subnets_green[count.index]
+  availability_zone               = length(regexall("^[a-z]{2}-", element(var.azs, count.index))) > 0 ? element(var.azs, count.index) : null
+  availability_zone_id            = length(regexall("^[a-z]{2}-", element(var.azs, count.index))) == 0 ? element(var.azs, count.index) : null
+  assign_ipv6_address_on_creation = var.private_subnet_assign_ipv6_address_on_creation == null ? var.assign_ipv6_address_on_creation : var.private_subnet_assign_ipv6_address_on_creation
 
-  # Correct handling of availability_zone and availability_zone_id
-  availability_zone    = length(regexall("^[a-z]{2}-", var.azs[each.key])) > 0 ? var.azs[each.key] : null
-  availability_zone_id = length(regexall("^[a-z]{2}-", var.azs[each.key])) == 0 ? var.azs[each.key] : null
+  ipv6_cidr_block = var.enable_ipv6 && length(var.private_subnet_ipv6_prefixes) > 0 ? cidrsubnet(aws_vpc.this[0].ipv6_cidr_block, 8, var.private_subnet_ipv6_prefixes[count.index]) : null
 
-  # Assign IPv6 if enabled
-  assign_ipv6_address_on_creation = var.private_subnet_assign_ipv6_address_on_creation == null ? 
-    var.assign_ipv6_address_on_creation : 
-    var.private_subnet_assign_ipv6_address_on_creation
-
-  # Handle IPv6 CIDR block assignment
-  ipv6_cidr_block = var.enable_ipv6 && length(var.private_subnet_ipv6_prefixes) > 0 ? 
-    cidrsubnet(aws_vpc.this[0].ipv6_cidr_block, 8, var.private_subnet_ipv6_prefixes[each.key]) : null
-
-  # Correct naming and tagging structure
   tags = merge(
     {
       "Name" = format(
         "%s-${var.private_subnet_suffix}-%s",
         var.name,
-        var.azs[each.key]
+        element(var.azs, count.index),
       )
     },
     var.tags,
-    var.private_eks_subnet_tags_green
+    var.private_eks_subnet_tags_green,
   )
-
   lifecycle {
     ignore_changes = [
       tags["Supported_Environment"]
@@ -1445,12 +1434,14 @@ resource "aws_route_table_association" "private_eks_blue" {
 }
 
 resource "aws_route_table_association" "private_eks_green" {
-  for_each = { for idx, subnet in aws_subnet.private_eks_green : idx => subnet }
+  count = var.create_vpc && length(var.private_eks_subnets_green) > 0 ? length(var.private_eks_subnets_green) : 0
 
-  subnet_id      = each.value.id
-  route_table_id = aws_route_table.private[each.key].id
+  subnet_id = element(aws_subnet.private_eks_green.*.id, count.index)
+  route_table_id = element(
+    aws_route_table.private.*.id,
+    var.single_nat_gateway ? 0 : count.index,
+  )
 }
-
 resource "aws_route_table_association" "database" {
   count = var.create_vpc && length(var.database_subnets) > 0 ? length(var.database_subnets) : 0
 
