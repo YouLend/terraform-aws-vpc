@@ -258,20 +258,18 @@ resource "aws_route" "public_internet_gateway_ipv6" {
 # There are as many routing tables as the number of NAT gateways
 #################
 resource "aws_route_table" "private" {
-  count = var.create_vpc && local.max_subnet_length > 0 ? local.nat_gateway_count : 0
+  for_each = local.nat_gateways
 
   vpc_id = local.vpc_id
 
   tags = merge(
     {
-      "Name" = var.single_nat_gateway ? "${var.name}-${var.private_subnet_suffix}" : format(
-        "%s-${var.private_subnet_suffix}-%s",
-        var.name,
-        element(var.azs, count.index),
-      )
+      "Name" = var.single_nat_gateway ? 
+        "${var.name}-${var.private_subnet_suffix}" : 
+        format("%s-${var.private_subnet_suffix}-%s", var.name, each.value)
     },
     var.tags,
-    var.private_route_table_tags,
+    var.private_route_table_tags
   )
 }
 
@@ -1377,21 +1375,14 @@ resource "aws_nat_gateway" "this" {
 
   depends_on = [aws_internet_gateway.this]
 }
+
+
 resource "aws_route" "private_nat_gateway" {
-  for_each = aws_nat_gateway.this
+  for_each = local.nat_gateways
 
   route_table_id         = aws_route_table.private[each.key].id
   destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = each.value.id
-}
-
-
-resource "aws_route" "private_nat_gateway" {
-  count = var.create_vpc && var.enable_nat_gateway ? length(aws_nat_gateway.this) : 0
-
-  route_table_id         = aws_route_table.private[count.index].id
-  destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = values(aws_nat_gateway.this)[count.index].id
+  nat_gateway_id         = aws_nat_gateway.this[each.key].id
 
   timeouts {
     create = "5m"
