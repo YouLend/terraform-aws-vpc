@@ -300,6 +300,7 @@ resource "aws_vpc_endpoint" "ssmmessages" {
   subnet_ids          = coalescelist(var.ssmmessages_endpoint_subnet_ids, [for s in values(aws_subnet.private) : s.id])
   private_dns_enabled = var.ssmmessages_endpoint_private_dns_enabled
   tags                = local.vpce_tags
+  depends_on = [aws_subnet.private]
 }
 
 #######################
@@ -345,6 +346,7 @@ resource "aws_vpc_endpoint" "ec2messages" {
   subnet_ids          = coalescelist(var.ec2messages_endpoint_subnet_ids, [for s in values(aws_subnet.private) : s.id])
   private_dns_enabled = var.ec2messages_endpoint_private_dns_enabled
   tags                = local.vpce_tags
+  depends_on = [aws_subnet.private]
 }
 
 ###############################
