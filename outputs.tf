@@ -260,8 +260,10 @@ output "public_route_table_ids" {
 
 output "private_route_table_ids" {
   description = "List of IDs of private route tables"
-  value       = values(aws_route_table.private)[*].id
- }
+  depends_on  = [aws_route_table.private] # Ensures this output waits for the route tables to be created
+  value       = [for rt in values(aws_route_table.private) : rt.id]
+}
+
 
 output "database_route_table_ids" {
   description = "List of IDs of database route tables"
@@ -359,8 +361,9 @@ output "nat_ids" {
 }
 
 output "nat_public_ips" {
-  description = "List of public Elastic IPs created for AWS NAT Gateway"
-  value       = var.reuse_nat_ips ? var.external_nat_ip_ids : values(aws_eip.nat)[*].public_ip
+  description = "List of public Elastic IPs for AWS NAT Gateways"
+  depends_on  = [aws_eip.nat] # Ensures this output waits for EIPs to be created
+  value       = [for eip in values(aws_eip.nat) : eip.public_ip]
 }
 
 output "natgw_ids" {
