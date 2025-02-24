@@ -533,6 +533,11 @@ resource "aws_subnet" "private_eks_blue" {
     var.tags,
     var.private_eks_subnet_tags_blue,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
 
 resource "aws_subnet" "private_eks_green" {
@@ -557,8 +562,12 @@ resource "aws_subnet" "private_eks_green" {
     var.tags,
     var.private_eks_subnet_tags_green,
   )
+  lifecycle {
+    ignore_changes = [
+      tags["Supported_Environment"]
+    ]
+  }
 }
-
 ################################################################################
 # Database subnet
 ##################
