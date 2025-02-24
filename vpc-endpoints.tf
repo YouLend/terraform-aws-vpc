@@ -297,7 +297,7 @@ resource "aws_vpc_endpoint" "ssmmessages" {
   vpc_endpoint_type = "Interface"
 
   security_group_ids  = var.ssmmessages_endpoint_security_group_ids
-  subnet_ids          = coalescelist(var.ssmmessages_endpoint_subnet_ids, aws_subnet.private.*.id)
+  subnet_ids          = coalescelist(var.ssmmessages_endpoint_subnet_ids, [for s in values(aws_subnet.private) : s.id])
   private_dns_enabled = var.ssmmessages_endpoint_private_dns_enabled
   tags                = local.vpce_tags
 }
@@ -342,7 +342,7 @@ resource "aws_vpc_endpoint" "ec2messages" {
   vpc_endpoint_type = "Interface"
 
   security_group_ids  = var.ec2messages_endpoint_security_group_ids
-  subnet_ids          = coalescelist(var.ec2messages_endpoint_subnet_ids, aws_subnet.private.*.id)
+  subnet_ids          = coalescelist(var.ec2messages_endpoint_subnet_ids, [for s in values(aws_subnet.private) : s.id])
   private_dns_enabled = var.ec2messages_endpoint_private_dns_enabled
   tags                = local.vpce_tags
 }
