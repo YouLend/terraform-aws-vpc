@@ -270,7 +270,7 @@ resource "aws_route_table" "private" {
       )
     },
     var.tags,
-    var.private_route_table_tags,
+    var.private_route_table_tags
   )
 }
 
@@ -1414,12 +1414,11 @@ resource "aws_route_table_association" "private" {
   subnet_id      = each.value.id
   route_table_id = aws_route_table.private[each.key].id
 }
-
 resource "aws_route_table_association" "private_eks_blue" {
   for_each = { for idx, subnet in var.private_eks_subnets_blue : idx => subnet }
 
   subnet_id      = aws_subnet.private_eks_blue[each.key].id
-  route_table_id = aws_route_table.private[element(var.azs, tonumber(each.key))].id
+  route_table_id = aws_route_table.private[aws_subnet.private_eks_blue[each.key].availability_zone].id
 }
 
 resource "aws_route_table_association" "private_eks_green" {
