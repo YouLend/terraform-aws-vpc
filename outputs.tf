@@ -270,17 +270,19 @@ output "database_route_table_ids" {
   value       = length(aws_route_table.database.*.id) > 0 ? aws_route_table.database.*.id : aws_route_table.private.*.id
 }
 
-
 output "redshift_route_table_ids" {
   description = "List of IDs of redshift route tables"
-  value = length(aws_route_table.redshift) > 0 
+  value = (
+    length(aws_route_table.redshift) > 0 
     ? [for rt in aws_route_table.redshift : rt.id] 
     : (
       var.enable_public_redshift 
       ? [for rt in aws_route_table.public : rt.id] 
       : [for rt in aws_route_table.private : rt.id]
     )
+  )
 }
+
 
 output "elasticache_route_table_ids" {
   description = "List of IDs of elasticache route tables"
