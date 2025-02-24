@@ -266,7 +266,7 @@ resource "aws_route_table" "private" {
       "Name" = var.single_nat_gateway ? "${var.name}-${var.private_subnet_suffix}" : format(
         "%s-${var.private_subnet_suffix}-%s",
         var.name,
-        each.value,
+        each.value
       )
     },
     var.tags,
@@ -527,13 +527,14 @@ resource "aws_subnet" "private_eks_blue" {
       "Name" = format(
         "%s-${var.private_subnet_suffix}-%s",
         var.name,
-        element(var.azs, tonumber(each.key)),
+        element(var.azs, tonumber(each.key))
       )
     },
     var.tags,
-    var.private_eks_subnet_tags_blue,
+    var.private_eks_subnet_tags_blue
   )
 }
+
 resource "aws_subnet" "private_eks_green" {
   for_each = { for idx, cidr in var.private_eks_subnets_green : idx => cidr }
 
@@ -1418,7 +1419,7 @@ resource "aws_route_table_association" "private_eks_blue" {
   for_each = { for idx, subnet in var.private_eks_subnets_blue : idx => subnet }
 
   subnet_id      = aws_subnet.private_eks_blue[each.key].id
-  route_table_id = aws_route_table.private[each.key].id
+  route_table_id = aws_route_table.private[element(var.azs, tonumber(each.key))].id
 }
 
 resource "aws_route_table_association" "private_eks_green" {
