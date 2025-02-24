@@ -258,9 +258,10 @@ resource "aws_route" "public_internet_gateway_ipv6" {
 # There are as many routing tables as the number of NAT gateways
 #################
 resource "aws_route_table" "private" {
-  for_each = local.nat_gateways
+  for_each = local.nat_gateways  
 
   vpc_id = local.vpc_id
+
   tags = merge(
     {
       "Name" = var.single_nat_gateway ? "${var.name}-${var.private_subnet_suffix}" : format(
@@ -1436,10 +1437,10 @@ resource "aws_route_table_association" "private_eks_blue" {
 }
 
 resource "aws_route_table_association" "private_eks_green" {
-  for_each = { for k, subnet in aws_subnet.private_eks_green : k => subnet }
+  for_each = { for idx, subnet in aws_subnet.private_eks_green : idx => subnet }
 
   subnet_id      = each.value.id
-  route_table_id = aws_route_table.private[each.value.availability_zone].id
+  route_table_id = aws_route_table.private[each.key].id
 }
 
 resource "aws_route_table_association" "database" {
