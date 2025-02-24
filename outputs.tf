@@ -312,8 +312,8 @@ output "database_ipv6_egress_route_id" {
 
 output "private_nat_gateway_route_ids" {
   description = "List of IDs of the private nat gateway route."
-  value       = aws_route.private_nat_gateway.*.id
-}
+  value       = [for route in values(aws_route.private_nat_gateway) : route.id]
+ }
 
 output "private_ipv6_egress_route_ids" {
   description = "List of IDs of the ipv6 egress route."
@@ -322,8 +322,8 @@ output "private_ipv6_egress_route_ids" {
 
 output "private_route_table_association_ids" {
   description = "List of IDs of the private route table association"
-  value       = aws_route_table_association.private.*.id
-}
+  value       = [for assoc in values(aws_route_table_association.private) : assoc.id]
+ }
 
 output "database_route_table_association_ids" {
   description = "List of IDs of the database route table association"

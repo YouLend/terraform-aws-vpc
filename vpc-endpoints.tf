@@ -277,6 +277,7 @@ resource "aws_vpc_endpoint" "ssm" {
   subnet_ids          = coalescelist(var.ssm_endpoint_subnet_ids, [for s in values(aws_subnet.private) : s.id])
   private_dns_enabled = var.ssm_endpoint_private_dns_enabled
   tags                = local.vpce_tags
+  depends_on = [aws_subnet.private]
 }
 
 ###############################
