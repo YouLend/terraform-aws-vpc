@@ -540,33 +540,45 @@ resource "aws_subnet" "private_eks_blue" {
     ]
   }
 }
-resource "aws_subnet" "private_eks_green" {
-  for_each = { for idx, cidr in var.private_eks_subnets_green : idx => cidr }
 
-  vpc_id       = local.vpc_id
-  cidr_block   = each.value
-  availability_zone = length(regexall("^[a-z]{2}-", var.azs[each.key])) > 0 ? var.azs[each.key] : null
+resource "aws_subnet" "private_eks_green" {
+  for_each = { for idx, cidr in var.private_eks_subnets_green : idx => cidr if idx < length(var.azs) }
+
+  vpc_id        = local.vpc_id
+  cidr_block    = each.value
+
+  # Correct handling of availability_zone and availability_zone_id
+  availability_zone    = length(regexall("^[a-z]{2}-", var.azs[each.key])) > 0 ? var.azs[each.key] : null
   availability_zone_id = length(regexall("^[a-z]{2}-", var.azs[each.key])) == 0 ? var.azs[each.key] : null
-  assign_ipv6_address_on_creation = var.private_subnet_assign_ipv6_address_on_creation == null ? var.assign_ipv6_address_on_creation : var.private_subnet_assign_ipv6_address_on_creation
-  ipv6_cidr_block = (
-  var.enable_ipv6 && length(var.private_subnet_ipv6_prefixes) > 0 
-  ? cidrsubnet(aws_vpc.this[0].ipv6_cidr_block, 8, lookup(var.private_subnet_ipv6_prefixes, each.key, 0)) 
-  : null
-  )
+
+  # Assign IPv6 if enabled
+  assign_ipv6_address_on_creation = var.private_subnet_assign_ipv6_address_on_creation == null ? 
+    var.assign_ipv6_address_on_creation : 
+    var.private_subnet_assign_ipv6_address_on_creation
+
+  # Handle IPv6 CIDR block assignment
+  ipv6_cidr_block = var.enable_ipv6 && length(var.private_subnet_ipv6_prefixes) > 0 ? 
+    cidrsubnet(aws_vpc.this[0].ipv6_cidr_block, 8, var.private_subnet_ipv6_prefixes[each.key]) : null
+
+  # Correct naming and tagging structure
   tags = merge(
     {
-      "Name" = format("%s-${var.private_subnet_suffix}-%s", var.name, element(var.azs, each.key))
+      "Name" = format(
+        "%s-${var.private_subnet_suffix}-%s",
+        var.name,
+        var.azs[each.key]
+      )
     },
     var.tags,
-    var.private_eks_subnet_tags_green,
+    var.private_eks_subnet_tags_green
   )
+
   lifecycle {
     ignore_changes = [
       tags["Supported_Environment"]
     ]
   }
 }
-
 
 ################################################################################
 # Database subnet
