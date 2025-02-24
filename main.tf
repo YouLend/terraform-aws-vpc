@@ -1436,10 +1436,10 @@ resource "aws_route_table_association" "private_eks_blue" {
 }
 
 resource "aws_route_table_association" "private_eks_green" {
-  for_each = aws_subnet.private_eks_green
+  for_each = { for k, subnet in aws_subnet.private_eks_green : k => subnet }
 
   subnet_id      = each.value.id
-  route_table_id = aws_route_table.private[element(var.azs, tonumber(each.key))].id
+  route_table_id = aws_route_table.private[each.value.availability_zone].id
 }
 
 resource "aws_route_table_association" "database" {
