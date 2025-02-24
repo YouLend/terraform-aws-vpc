@@ -1377,6 +1377,13 @@ resource "aws_nat_gateway" "this" {
 
   depends_on = [aws_internet_gateway.this]
 }
+resource "aws_route" "private_nat_gateway" {
+  for_each = aws_nat_gateway.this
+
+  route_table_id         = aws_route_table.private[each.key].id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = each.value.id
+}
 
 
 resource "aws_route" "private_nat_gateway" {
