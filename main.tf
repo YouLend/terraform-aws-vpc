@@ -1432,22 +1432,14 @@ resource "aws_route_table_association" "private_eks_blue" {
     var.single_nat_gateway ? 0 : count.index,
   )
 }
-resource "aws_route_table_association" "private_eks_green" {
-  count = var.create_vpc && length(var.private_eks_subnets_green) > 0 ? length(var.private_eks_subnets_green) : 0
 
-  subnet_id      = aws_subnet.private_eks_green[count.index].id
-  route_table_id = aws_route_table.private[element(var.azs, count.index)].id
+resource "aws_route_table_association" "private_eks_green" {
+  for_each = aws_subnet.private_eks_green
+
+  subnet_id      = each.value.id
+  route_table_id = aws_route_table.private[element(var.azs, tonumber(each.key))].id
 }
 
-#resource "aws_route_table_association" "private_eks_green" {
-#  count = var.create_vpc && length(var.private_eks_subnets_green) > 0 ? length(var.private_eks_subnets_green) : 0
-#
-#  subnet_id = element(aws_subnet.private_eks_green[*].id, count.index)
-#  route_table_id = element(
-#    aws_route_table.private[*].id,
-#    var.single_nat_gateway ? 0 : count.index,
-#  )
-#}
 resource "aws_route_table_association" "database" {
   count = var.create_vpc && length(var.database_subnets) > 0 ? length(var.database_subnets) : 0
 
