@@ -266,7 +266,6 @@ data "aws_vpc_endpoint_service" "ssm" {
 
   service = "ssm"
 }
-
 resource "aws_vpc_endpoint" "ssm" {
   count = var.create_vpc && var.enable_ssm_endpoint ? 1 : 0
 
@@ -275,7 +274,7 @@ resource "aws_vpc_endpoint" "ssm" {
   vpc_endpoint_type = "Interface"
 
   security_group_ids  = var.ssm_endpoint_security_group_ids
-  subnet_ids          = coalescelist(var.ssm_endpoint_subnet_ids, aws_subnet.private.*.id)
+  subnet_ids          = coalescelist(var.ssm_endpoint_subnet_ids, [for s in values(aws_subnet.private) : s.id])
   private_dns_enabled = var.ssm_endpoint_private_dns_enabled
   tags                = local.vpce_tags
 }
