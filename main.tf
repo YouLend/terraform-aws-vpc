@@ -1423,15 +1423,18 @@ resource "aws_route_table_association" "private" {
   subnet_id      = each.value.id
   route_table_id = aws_route_table.private[each.key].id
 }
+
 resource "aws_route_table_association" "private_eks_blue" {
   count = var.create_vpc && length(var.private_eks_subnets_blue) > 0 ? length(var.private_eks_subnets_blue) : 0
 
   subnet_id = element(aws_subnet.private_eks_blue[*].id, count.index)
+
   route_table_id = element(
-    aws_route_table.private[*].id,
-    var.single_nat_gateway ? 0 : count.index,
+    [for rt in aws_route_table.private : rt.id], 
+    var.single_nat_gateway ? 0 : count.index
   )
 }
+
 resource "aws_route_table_association" "private_eks_green" {
   count = var.create_vpc && length(var.private_eks_subnets_green) > 0 ? length(var.private_eks_subnets_green) : 0
 
