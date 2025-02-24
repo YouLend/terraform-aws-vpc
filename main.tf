@@ -261,15 +261,16 @@ resource "aws_route_table" "private" {
   for_each = local.nat_gateways
 
   vpc_id = local.vpc_id
-
   tags = merge(
     {
-      "Name" = var.single_nat_gateway ? 
-        "${var.name}-${var.private_subnet_suffix}" : 
-        format("%s-${var.private_subnet_suffix}-%s", var.name, each.value)
+      "Name" = var.single_nat_gateway ? "${var.name}-${var.private_subnet_suffix}" : format(
+        "%s-${var.private_subnet_suffix}-%s",
+        var.name,
+        each.value,
+      )
     },
     var.tags,
-    var.private_route_table_tags
+    var.private_route_table_tags,
   )
 }
 
