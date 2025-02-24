@@ -482,33 +482,29 @@ resource "aws_subnet" "public_eks_green" {
 #################
 # Private subnet
 #################
+
 resource "aws_subnet" "private" {
-  count = var.create_vpc && length(var.private_subnets) > 0 ? length(var.private_subnets) : 0
+  for_each = { for idx, cidr in var.private_subnets : idx => cidr }
 
   vpc_id                          = local.vpc_id
-  cidr_block                      = var.private_subnets[count.index]
-  availability_zone               = length(regexall("^[a-z]{2}-", element(var.azs, count.index))) > 0 ? element(var.azs, count.index) : null
-  availability_zone_id            = length(regexall("^[a-z]{2}-", element(var.azs, count.index))) == 0 ? element(var.azs, count.index) : null
+  cidr_block                      = each.value
+  availability_zone               = length(regexall("^[a-z]{2}-", element(var.azs, tonumber(each.key)))) > 0 ? element(var.azs, tonumber(each.key)) : null
+  availability_zone_id            = length(regexall("^[a-z]{2}-", element(var.azs, tonumber(each.key)))) == 0 ? element(var.azs, tonumber(each.key)) : null
   assign_ipv6_address_on_creation = var.private_subnet_assign_ipv6_address_on_creation == null ? var.assign_ipv6_address_on_creation : var.private_subnet_assign_ipv6_address_on_creation
 
-  ipv6_cidr_block = var.enable_ipv6 && length(var.private_subnet_ipv6_prefixes) > 0 ? cidrsubnet(aws_vpc.this[0].ipv6_cidr_block, 8, var.private_subnet_ipv6_prefixes[count.index]) : null
+  ipv6_cidr_block = var.enable_ipv6 && length(var.private_subnet_ipv6_prefixes) > 0 ? cidrsubnet(aws_vpc.this[0].ipv6_cidr_block, 8, var.private_subnet_ipv6_prefixes[tonumber(each.key)]) : null
 
   tags = merge(
     {
       "Name" = format(
         "%s-${var.private_subnet_suffix}-%s",
         var.name,
-        element(var.azs, count.index),
+        element(var.azs, tonumber(each.key)),
       )
     },
     var.tags,
     var.private_subnet_tags,
   )
-  lifecycle {
-    ignore_changes = [
-      tags["Supported_Environment"]
-    ]
-  }
 }
 
 ##################
@@ -1421,14 +1417,12 @@ resource "aws_route" "private_eks_ipv6_egress_green" {
 ##########################
 # Route table association
 ##########################
-resource "aws_route_table_association" "private" {
-  count = var.create_vpc && length(var.private_subnets) > 0 ? length(var.private_subnets) : 0
 
-  subnet_id = element(aws_subnet.private.*.id, count.index)
-  route_table_id = element(
-    aws_route_table.private.*.id,
-    var.single_nat_gateway ? 0 : count.index,
-  )
+resource "aws_route_table_association" "private" {
+  for_each = aws_subnet.private
+
+  subnet_id      = each.value.id
+  route_table_id = aws_route_table.private[each.key].id
 }
 
 resource "aws_route_table_association" "private_eks_blue" {
