@@ -1449,8 +1449,7 @@ resource "aws_route_table_association" "private_eks_green" {
 resource "aws_route_table_association" "database" {
   count = var.create_vpc && length(var.database_subnets) > 0 ? length(var.database_subnets) : 0
 
-  subnet_id = element(aws_subnet.database[*].id, count.index)
-  
+  subnet_id = aws_subnet.database[count.index].id
   route_table_id = element(
     coalescelist(
       [for rt in aws_route_table.database : rt.id], 
@@ -1460,6 +1459,7 @@ resource "aws_route_table_association" "database" {
       ? (var.single_nat_gateway || var.create_database_internet_gateway_route ? 0 : count.index) 
       : count.index
   )
+
 }
 
 resource "aws_route_table_association" "redshift" {
