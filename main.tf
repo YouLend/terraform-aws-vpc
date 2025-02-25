@@ -238,11 +238,14 @@ resource "aws_route_table" "public" {
     var.public_route_table_tags,
   )
 }
-
 resource "aws_route" "public_internet_gateway" {
-  count = var.create_vpc && var.create_igw && length(var.public_subnets) > 0 || length(var.public_eks_subnets_blue) > 0 || length(var.public_eks_subnets_green) > 0 ? 1 : 0
+  count = var.create_vpc && var.create_igw && (
+    length(var.public_subnets) > 0 || 
+    length(var.public_eks_subnets_blue) > 0 || 
+    length(var.public_eks_subnets_green) > 0
+  ) ? 1 : 0
 
-  route_table_id         = aws_route_table.public[0].id
+  route_table_id         = values(aws_route_table.public)[0].id  
   destination_cidr_block = "0.0.0.0/0"
   gateway_id             = aws_internet_gateway.this[0].id
 
@@ -1536,18 +1539,9 @@ resource "aws_route_table_association" "intra" {
 resource "aws_route_table_association" "public" {
   count = var.create_vpc && length(var.public_subnets) > 0 ? length(var.public_subnets) : 0
 
-  subnet_id      = element([for s in aws_subnet.public : s.id], count.index)  # Convert subnet map to list
-  route_table_id = values(aws_route_table.public)[0].id  # Extract the first route table ID correctly
+  subnet_id      = element([for s in aws_subnet.public : s.id], count.index)   
+  route_table_id = values(aws_route_table.public)[0].id   
 }
-
-#resource "aws_route_table_association" "public" {
-#  for_each = (
-#    var.create_vpc && length(var.public_subnets) > 0 
-#  ) ? aws_subnet.public : {}
-#
-#  subnet_id      = each.value.id  # Correct reference to subnet ID
-#  route_table_id = aws_route_table.public[0].id  
-#}
 
 
 resource "aws_route_table_association" "public_eks_blue" {
