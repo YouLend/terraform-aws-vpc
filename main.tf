@@ -220,14 +220,19 @@ resource "aws_default_route_table" "default" {
 # Publiс routes
 ################
 resource "aws_route_table" "public" {
-  
-  for_each = var.create_vpc && (length(var.public_subnets) > 0 || length(var.public_eks_subnets_blue) > 0 || length(var.public_eks_subnets_green) > 0)
-    ? { "public" = true } : {}
+  for_each = (
+    var.create_vpc && (
+      length(var.public_subnets) > 0 || 
+      length(var.public_eks_subnets_blue) > 0 || 
+      length(var.public_eks_subnets_green) > 0
+    )
+  ) ? { "public" = true } : {}
+
   vpc_id = local.vpc_id
 
   tags = merge(
     {
-      "Name" = format("%s-${var.public_subnet_suffix}", var.name)
+      "Name" = format("%s-%s", var.name, var.public_subnet_suffix)
     },
     var.tags,
     var.public_route_table_tags,
