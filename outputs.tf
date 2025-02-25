@@ -255,7 +255,7 @@ output "elasticache_subnet_group_name" {
 
 output "public_route_table_ids" {
   description = "List of IDs of public route tables"
-  value       = value = values(aws_route_table.public)[*].id
+  value       =  values(aws_route_table.public)[*].id
  }
 
 output "private_route_table_ids" {
