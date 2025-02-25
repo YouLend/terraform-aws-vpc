@@ -70,17 +70,17 @@ output "vpc_owner_id" {
 
 output "private_subnets" {
   description = "List of IDs of private subnets"
-  value       = values(aws_subnet.private)[*].id
+  value       = aws_subnet.private[*].id
  }
 
 output "private_subnet_arns" {
   description = "List of ARNs of private subnets"
-  value       = values(aws_subnet.private)[*].arn
+  value       = aws_subnet.private[*].arn
  }
 
 output "private_subnets_cidr_blocks" {
   description = "List of cidr_blocks of private subnets"
-  value       = values(aws_subnet.private)[*].cidr_block
+  value       = aws_subnet.private[*].cidr_block
  }
 
 output "public_eks_subnets_cidr_blocks_blue" {
@@ -125,7 +125,7 @@ output "private_eks_subnets_green" {
 
 output "private_subnets_ipv6_cidr_blocks" {
   description = "List of IPv6 cidr_blocks of private subnets in an IPv6 enabled VPC"
-  value       = values(aws_subnet.private)[*].ipv6_cidr_block
+  value       = aws_subnet.private[*].ipv6_cidr_block
  }
 
 output "public_subnets" {
