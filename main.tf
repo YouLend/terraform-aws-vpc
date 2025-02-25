@@ -1423,7 +1423,7 @@ resource "aws_route" "private_eks_ipv6_egress_green" {
 ##########################
 
 resource "aws_route_table_association" "private" {
-  for_each = aws_subnet.private
+  for_each = { for idx, subnet in aws_subnet.private : idx => subnet } # Convert list to map
 
   subnet_id      = each.value.id
   route_table_id = var.single_nat_gateway ? values(aws_route_table.private)[0].id : aws_route_table.private[each.key].id
