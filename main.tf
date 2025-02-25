@@ -387,10 +387,10 @@ resource "aws_route_table" "intra" {
 # Public subnet
 ################
 resource "aws_subnet" "public" {
-   for_each = var.create_vpc && length(var.public_subnets) > 0 && 
-          (!var.one_nat_gateway_per_az || length(var.public_subnets) >= length(var.azs)) 
-          ? { for idx, cidr in var.public_subnets : idx => cidr }
-          : {}
+  for_each = (
+    var.create_vpc && length(var.public_subnets) > 0 && 
+    (!var.one_nat_gateway_per_az || length(var.public_subnets) >= length(var.azs))
+  ) ? { for idx, cidr in var.public_subnets : idx => cidr } : {}
 
   vpc_id                          = local.vpc_id
   cidr_block                      = each.value
