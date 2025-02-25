@@ -47,7 +47,7 @@ resource "aws_vpc_endpoint_route_table_association" "public_s3" {
   count = var.create_vpc && var.enable_s3_endpoint && var.enable_public_s3_endpoint && length(var.public_subnets) > 0 && var.s3_endpoint_type == "Gateway" ? 1 : 0
 
   vpc_endpoint_id = aws_vpc_endpoint.s3[0].id
-  route_table_id  = aws_route_table.public[0].id
+  route_table_id  = values(aws_route_table.public)[0].id   
 }
 
 ############################
