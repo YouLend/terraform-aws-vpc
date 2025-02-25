@@ -279,20 +279,22 @@ resource "aws_route_table" "private" {
 # Database routes
 #################
 resource "aws_route_table" "database" {
-  count = var.create_vpc && var.create_database_subnet_route_table && length(var.database_subnets) > 0 ? var.single_nat_gateway || var.create_database_internet_gateway_route ? 1 : length(var.database_subnets) : 0
+  count = var.create_vpc 
+    && var.create_database_subnet_route_table 
+    && length(var.database_subnets) > 0 
+    ? (var.single_nat_gateway || var.create_database_internet_gateway_route ? 1 : length(var.database_subnets))
+    : 0
 
   vpc_id = local.vpc_id
 
   tags = merge(
     {
-      "Name" = var.single_nat_gateway || var.create_database_internet_gateway_route ? "${var.name}-${var.database_subnet_suffix}" : format(
-        "%s-${var.database_subnet_suffix}-%s",
-        var.name,
-        element(var.azs, count.index),
-      )
+      "Name" = var.single_nat_gateway || var.create_database_internet_gateway_route 
+        ? "${var.name}-${var.database_subnet_suffix}" 
+        : format("%s-${var.database_subnet_suffix}-%s", var.name, element(var.azs, count.index))
     },
     var.tags,
-    var.database_route_table_tags,
+    var.database_route_table_tags
   )
 }
 
@@ -1446,20 +1448,28 @@ resource "aws_route_table_association" "private_eks_green" {
   )
 }
 
+#resource "aws_route_table_association" "database" {
+#  count = var.create_vpc && length(var.database_subnets) > 0 ? length(var.database_subnets) : 0
+#
+#  subnet_id = aws_subnet.database[count.index].id
+#  route_table_id = element(
+#    coalescelist(
+#      [for rt in aws_route_table.database : rt.id], 
+#      [for rt in aws_route_table.private : rt.id]
+#    ),
+#    var.create_database_subnet_route_table 
+#      ? (var.single_nat_gateway || var.create_database_internet_gateway_route ? 0 : count.index) 
+#      : count.index
+#  )
+#
+#}
 resource "aws_route_table_association" "database" {
   count = var.create_vpc && length(var.database_subnets) > 0 ? length(var.database_subnets) : 0
 
   subnet_id = aws_subnet.database[count.index].id
-  route_table_id = element(
-    coalescelist(
-      [for rt in aws_route_table.database : rt.id], 
-      [for rt in aws_route_table.private : rt.id]
-    ),
-    var.create_database_subnet_route_table 
-      ? (var.single_nat_gateway || var.create_database_internet_gateway_route ? 0 : count.index) 
-      : count.index
-  )
-
+  route_table_id = var.single_nat_gateway || var.create_database_internet_gateway_route
+    ? aws_route_table.database[0].id
+    : aws_route_table.database[count.index].id
 }
 
 resource "aws_route_table_association" "redshift" {
