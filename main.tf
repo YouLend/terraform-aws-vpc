@@ -1465,10 +1465,13 @@ resource "aws_route_table_association" "database" {
   count = var.create_vpc && length(var.database_subnets) > 0 ? length(var.database_subnets) : 0
 
   subnet_id = aws_subnet.database[count.index].id
-  route_table_id = var.single_nat_gateway || var.create_database_internet_gateway_route
+  route_table_id = (
+    var.single_nat_gateway || var.create_database_internet_gateway_route
     ? aws_route_table.database[0].id
     : aws_route_table.database[count.index].id
+  )
 }
+
 
 resource "aws_route_table_association" "redshift" {
   count = var.create_vpc && length(var.redshift_subnets) > 0 && false == var.enable_public_redshift ? length(var.redshift_subnets) : 0
