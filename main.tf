@@ -281,10 +281,7 @@ resource "aws_route" "private_routes" {
   }
 
   route_table_id = each.value
-  
-  dynamic "route" {
-    for_each = var.default_route_table_routes
-    content {
+ 
       # One of the following destinations must be provided
       cidr_block      = route.value.cidr_block
       ipv6_cidr_block = lookup(route.value, "ipv6_cidr_block", null)
@@ -299,8 +296,7 @@ resource "aws_route" "private_routes" {
       # `vpc_endpoint_id` was recently added in v3.15.0
       # vpc_endpoint_id           = lookup(route.value, "vpc_endpoint_id", null)
       vpc_peering_connection_id = lookup(route.value, "vpc_peering_connection_id", null)
-    }
-  }
+  
 }
 
 #################
