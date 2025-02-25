@@ -1533,15 +1533,21 @@ resource "aws_route_table_association" "intra" {
   route_table_id = element(aws_route_table.intra.*.id, 0)
 }
 
-
 resource "aws_route_table_association" "public" {
-  for_each = (
-    var.create_vpc && length(var.public_subnets) > 0 
-  ) ? aws_subnet.public : {}
+  count = var.create_vpc && length(var.public_subnets) > 0 ? length(var.public_subnets) : 0
 
-  subnet_id      = each.value.id  # Correct reference to subnet ID
-  route_table_id = aws_route_table.public[0].id  
+  subnet_id      = element([for s in aws_subnet.public : s.id], count.index)  # Convert subnet map to list
+  route_table_id = values(aws_route_table.public)[0].id  # Extract the first route table ID correctly
 }
+
+#resource "aws_route_table_association" "public" {
+#  for_each = (
+#    var.create_vpc && length(var.public_subnets) > 0 
+#  ) ? aws_subnet.public : {}
+#
+#  subnet_id      = each.value.id  # Correct reference to subnet ID
+#  route_table_id = aws_route_table.public[0].id  
+#}
 
 
 resource "aws_route_table_association" "public_eks_blue" {
