@@ -220,8 +220,9 @@ resource "aws_default_route_table" "default" {
 # Publiс routes
 ################
 resource "aws_route_table" "public" {
-  count = var.create_vpc && length(var.public_subnets) > 0 || length(var.public_eks_subnets_blue) > 0 || length(var.public_eks_subnets_green) > 0 ? 1 : 0
-
+  
+  for_each = var.create_vpc && (length(var.public_subnets) > 0 || length(var.public_eks_subnets_blue) > 0 || length(var.public_eks_subnets_green) > 0)
+    ? { "public" = true } : {}
   vpc_id = local.vpc_id
 
   tags = merge(
@@ -1527,12 +1528,16 @@ resource "aws_route_table_association" "intra" {
   route_table_id = element(aws_route_table.intra.*.id, 0)
 }
 
-resource "aws_route_table_association" "public" {
-  count = var.create_vpc && length(var.public_subnets) > 0 ? length(var.public_subnets) : 0
 
-  subnet_id      = element([for s in aws_subnet.public : s.id], count.index)
-  route_table_id = aws_route_table.public[0].id
+resource "aws_route_table_association" "public" {
+  for_each = (
+    var.create_vpc && length(var.public_subnets) > 0 
+  ) ? aws_subnet.public : {}
+
+  subnet_id      = each.value.id  # Correct reference to subnet ID
+  route_table_id = aws_route_table.public[0].id  
 }
+
 
 resource "aws_route_table_association" "public_eks_blue" {
   count = var.create_vpc && length(var.public_eks_subnets_blue) > 0 ? length(var.public_eks_subnets_blue) : 0
