@@ -254,7 +254,7 @@ resource "aws_route" "public_internet_gateway" {
   route_table_id         = values(aws_route_table.public)[0].id  
   destination_cidr_block = "0.0.0.0/0"
   gateway_id             = aws_internet_gateway.this[0].id
-
+  depends_on = [aws_internet_gateway.this]
   timeouts {
     create = "5m"
   }
@@ -269,7 +269,8 @@ resource "aws_route" "public_internet_gateway_ipv6" {
 
   route_table_id              = values(aws_route_table.public)[0].id
   destination_ipv6_cidr_block = "::/0"
-  gateway_id                  = try(aws_internet_gateway.this[0].id, null)
+  gateway_id                  = aws_internet_gateway.this[0].id
+  depends_on = [aws_internet_gateway.this]
  }
 
 #################
