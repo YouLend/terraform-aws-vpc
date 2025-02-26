@@ -299,12 +299,12 @@ output "intra_route_table_ids" {
 
 output "public_internet_gateway_route_id" {
   description = "ID of the internet gateway route."
-  value       = concat(aws_route.public_internet_gateway.*.id, [""])[0]
+  value = try(one(aws_route.public_internet_gateway).id, "")
 }
 
 output "public_internet_gateway_ipv6_route_id" {
   description = "ID of the IPv6 internet gateway route."
-  value       = concat(aws_route.public_internet_gateway_ipv6.*.id, [""])[0]
+  value = try(one(aws_route.public_internet_gateway_ipv6).id, "")  
 }
 
 output "database_internet_gateway_route_id" {
