@@ -261,7 +261,7 @@ resource "aws_route" "public_internet_gateway" {
   }
 }
 resource "aws_route" "public_internet_gateway_ipv6" {
-  for_each = var.create_vpc && var.create_igw  && (
+  for_each = var.create_vpc && var.create_igw && var.enable_ipv6 && (
     length(var.public_subnets) > 0 || 
     length(var.public_eks_subnets_blue) > 0 || 
     length(var.public_eks_subnets_green) > 0
