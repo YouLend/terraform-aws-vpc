@@ -8,10 +8,15 @@ locals {
     length(var.private_eks_subnets_green)
   )
   nat_gateway_count = var.single_nat_gateway ? 1 : var.one_nat_gateway_per_az ? length(var.azs) : local.max_subnet_length
+  #nat_gateways = (
+  #  var.one_nat_gateway_per_az ? 
+  #    { for idx, az in var.azs : tostring(idx) => az } : 
+  #    (var.single_nat_gateway ? { "0" = "single" } : { for idx in range(local.max_subnet_length) : tostring(idx) => idx })
+  #)
   nat_gateways = (
     var.one_nat_gateway_per_az ? 
       { for idx, az in var.azs : tostring(idx) => az } : 
-      (var.single_nat_gateway ? { "0" = "single" } : { for idx in range(local.max_subnet_length) : tostring(idx) => idx })
+      (var.single_nat_gateway ? { "0" = "single" } : { for idx, cidr in var.public_subnets : tostring(idx) => idx })
   )
  external_nat_ip_map = { for idx, ip in var.external_nat_ip_ids : tostring(idx) => ip }
   # Use `local.vpc_id` to give a hint to Terraform that subnets should be deleted before secondary CIDR blocks can be free!
