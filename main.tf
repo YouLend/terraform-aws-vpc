@@ -244,34 +244,32 @@ resource "aws_route_table" "public" {
     var.public_route_table_tags,
   )
 }
+
 resource "aws_route" "public_internet_gateway" {
-  count = var.create_vpc && var.create_igw && (
+  for_each = var.create_vpc && var.create_igw && (
     length(var.public_subnets) > 0 || 
     length(var.public_eks_subnets_blue) > 0 || 
     length(var.public_eks_subnets_green) > 0
-  ) ? 1 : 0
+  ) ? toset(["ipv4"]) : toset([])
 
   route_table_id         = values(aws_route_table.public)[0].id  
   destination_cidr_block = "0.0.0.0/0"
   gateway_id             = aws_internet_gateway.this[0].id
-   timeouts {
-    create = "5m"
-  }
+
   lifecycle {
     replace_triggered_by = [aws_internet_gateway.this]
   }
 }
-
 resource "aws_route" "public_internet_gateway_ipv6" {
-  count = var.create_vpc && var.create_igw && var.enable_ipv6 && (
+  for_each = var.create_vpc && var.create_igw && var.enable_ipv6 && (
     length(var.public_subnets) > 0 || 
     length(var.public_eks_subnets_blue) > 0 || 
     length(var.public_eks_subnets_green) > 0
-  ) ? 1 : 0
+  ) ? toset(["ipv6"]) : toset([])
 
   route_table_id              = values(aws_route_table.public)[0].id
   destination_ipv6_cidr_block = "::/0"
-  gateway_id                  = one(aws_internet_gateway.this[*].id) # Ensures correct dependency
+  gateway_id                  = aws_internet_gateway.this[0].id
 
   lifecycle {
     replace_triggered_by = [aws_internet_gateway.this]
