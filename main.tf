@@ -8,11 +8,7 @@ locals {
     length(var.private_eks_subnets_green)
   )
   nat_gateway_count = var.single_nat_gateway ? 1 : var.one_nat_gateway_per_az ? length(var.azs) : local.max_subnet_length
-  #nat_gateways = (
-  #  var.one_nat_gateway_per_az ? 
-  #    { for idx, az in var.azs : tostring(idx) => az } : 
-  #    (var.single_nat_gateway ? { "0" = "single" } : { for idx in range(local.max_subnet_length) : tostring(idx) => idx })
-  #)
+
   nat_gateways = (
     var.one_nat_gateway_per_az ? 
       { for idx, az in var.azs : tostring(idx) => az } : 
