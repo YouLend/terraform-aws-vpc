@@ -148,7 +148,6 @@ resource "aws_vpc_dhcp_options_association" "this" {
 # Internet Gateway
 ###################
 resource "aws_internet_gateway" "this" {
- # count = var.create_vpc && var.create_igw && length(var.public_subnets) > 0 || length(var.public_eks_subnets_blue) > 0 || length(var.public_eks_subnets_green) > 0 ? 1 : 0
   count = var.create_vpc && var.create_igw && (
   length(var.public_subnets) > 0 || 
   length(var.public_eks_subnets_blue) > 0 || 
@@ -1483,21 +1482,6 @@ resource "aws_route_table_association" "private_eks_green" {
   )
 }
 
-#resource "aws_route_table_association" "database" {
-#  count = var.create_vpc && length(var.database_subnets) > 0 ? length(var.database_subnets) : 0
-#
-#  subnet_id = aws_subnet.database[count.index].id
-#  route_table_id = element(
-#    coalescelist(
-#      [for rt in aws_route_table.database : rt.id], 
-#      [for rt in aws_route_table.private : rt.id]
-#    ),
-#    var.create_database_subnet_route_table 
-#      ? (var.single_nat_gateway || var.create_database_internet_gateway_route ? 0 : count.index) 
-#      : count.index
-#  )
-#
-#}
 resource "aws_route_table_association" "database" {
   count = var.create_vpc && length(var.database_subnets) > 0 ? length(var.database_subnets) : 0
 
