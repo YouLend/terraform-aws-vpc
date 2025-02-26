@@ -254,9 +254,11 @@ resource "aws_route" "public_internet_gateway" {
   route_table_id         = values(aws_route_table.public)[0].id  
   destination_cidr_block = "0.0.0.0/0"
   gateway_id             = aws_internet_gateway.this[0].id
-  depends_on = [aws_internet_gateway.this]
-  timeouts {
+   timeouts {
     create = "5m"
+  }
+  lifecycle {
+    replace_triggered_by = [aws_internet_gateway.this]
   }
 }
 
@@ -269,9 +271,12 @@ resource "aws_route" "public_internet_gateway_ipv6" {
 
   route_table_id              = values(aws_route_table.public)[0].id
   destination_ipv6_cidr_block = "::/0"
-  gateway_id                  = aws_internet_gateway.this[0].id
-  depends_on = [aws_internet_gateway.this]
- }
+  gateway_id                  = one(aws_internet_gateway.this[*].id) # Ensures correct dependency
+
+  lifecycle {
+    replace_triggered_by = [aws_internet_gateway.this]
+  }
+}
 
 #################
 # Private routes
