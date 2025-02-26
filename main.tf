@@ -269,7 +269,7 @@ resource "aws_route" "public_internet_gateway_ipv6" {
 
   route_table_id              = values(aws_route_table.public)[0].id
   destination_ipv6_cidr_block = "::/0"
-  gateway_id                  = element(aws_internet_gateway.this[*].id, 0)   
+  gateway_id                  = aws_internet_gateway.this[0].id
 }
 
 #################
