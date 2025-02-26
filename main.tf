@@ -256,7 +256,10 @@ resource "aws_route" "public_internet_gateway" {
 }
 
 resource "aws_route" "public_internet_gateway_ipv6" {
-  count = var.create_vpc && var.create_igw && var.enable_ipv6 && (length(var.public_subnets) > 0 || length(var.public_eks_subnets_blue) > 0 || length(var.public_eks_subnets_green) > 0 ) ? 1 : 0
+  #count = var.create_vpc && var.create_igw && var.enable_ipv6 && (length(var.public_subnets) > 0 || length(var.public_eks_subnets_blue) > 0 || length(var.public_eks_subnets_green) > 0 ) ? 1 : 0
+  count = var.create_vpc && var.create_igw && var.enable_ipv6 && (
+  length(var.public_subnets) > 0 || length(var.public_eks_subnets_blue) > 0 || length(var.public_eks_subnets_green) > 0
+) ? 1 : 0
 
   route_table_id              = values(aws_route_table.public)[0].id
   destination_ipv6_cidr_block = "::/0"
