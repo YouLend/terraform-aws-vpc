@@ -1466,7 +1466,7 @@ resource "aws_route_table_association" "private_eks_blue" {
   subnet_id = element(aws_subnet.private_eks_blue[*].id, count.index)
 
   route_table_id = element(
-    [for rt in aws_route_table.private : rt.id], 
+    [for route in aws_route_table.private : route.id], 
     var.single_nat_gateway ? 0 : count.index
   )
 }
@@ -1477,7 +1477,7 @@ resource "aws_route_table_association" "private_eks_green" {
   subnet_id = element(aws_subnet.private_eks_green[*].id, count.index)
   
   route_table_id = element(
-    [for rt in aws_route_table.private : rt.id],
+    [for route in aws_route_table.private : route.id],
     var.single_nat_gateway ? 0 : count.index
   )
 }
@@ -1537,20 +1537,20 @@ resource "aws_route_table_association" "intra" {
 resource "aws_route_table_association" "public" {
   count = var.create_vpc && length(var.public_subnets) > 0 ? length(var.public_subnets) : 0
 
-  subnet_id      = element([for s in aws_subnet.public : s.id], count.index)   
+  subnet_id      = element([for subnet in aws_subnet.public : subnet.id], count.index)   
   route_table_id = values(aws_route_table.public)[0].id   
 }
 
 resource "aws_route_table_association" "public_eks_blue" {
   count = var.create_vpc && length(var.public_eks_subnets_blue) > 0 ? length(var.public_eks_subnets_blue) : 0
 
-  subnet_id      = element([for s in aws_subnet.public_eks_blue : s.id], count.index)  
+  subnet_id      = element([for subnet in aws_subnet.public_eks_blue : subnet.id], count.index)  
   route_table_id = values(aws_route_table.public)[0].id  
 }
 
 resource "aws_route_table_association" "public_eks_green" {
   count = var.create_vpc && length(var.public_eks_subnets_green) > 0 ? length(var.public_eks_subnets_green) : 0
-  subnet_id      = element([for s in aws_subnet.public_eks_green : s.id], count.index)  
+  subnet_id      = element([for subnet in aws_subnet.public_eks_green : subnet.id], count.index)  
   route_table_id = values(aws_route_table.public)[0].id  
 }
 
