@@ -254,7 +254,9 @@ resource "aws_route" "public_internet_gateway" {
   route_table_id         = values(aws_route_table.public)[0].id  
   destination_cidr_block = "0.0.0.0/0"
   gateway_id             = aws_internet_gateway.this[0].id
-
+  timeouts {
+    create = "5m"
+  }
   lifecycle {
     replace_triggered_by = [aws_internet_gateway.this]
   }
