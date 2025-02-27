@@ -275,7 +275,7 @@ resource "aws_vpc_endpoint" "ssm" {
   vpc_endpoint_type = "Interface"
 
   security_group_ids  = var.ssm_endpoint_security_group_ids
-  subnet_ids          = coalescelist(var.ssm_endpoint_subnet_ids, sort([for s in aws_subnet.private : s.id]))
+  subnet_ids          = coalescelist(var.ssm_endpoint_subnet_ids, sort([for subnet in aws_subnet.private : subnet.id]))
 
   private_dns_enabled = var.ssm_endpoint_private_dns_enabled
   tags                = local.vpce_tags
@@ -299,7 +299,7 @@ resource "aws_vpc_endpoint" "ssmmessages" {
   vpc_endpoint_type = "Interface"
 
   security_group_ids  = var.ssmmessages_endpoint_security_group_ids
-  subnet_ids          = coalescelist(var.ssmmessages_endpoint_subnet_ids, sort([for s in aws_subnet.private : s.id]))
+  subnet_ids          = coalescelist(var.ssmmessages_endpoint_subnet_ids, sort([for subnet in aws_subnet.private : subnet.id]))
 
   private_dns_enabled = var.ssmmessages_endpoint_private_dns_enabled
   tags                = local.vpce_tags
@@ -346,7 +346,7 @@ resource "aws_vpc_endpoint" "ec2messages" {
   vpc_endpoint_type = "Interface"
 
   security_group_ids  = var.ec2messages_endpoint_security_group_ids
-  subnet_ids          = coalescelist(var.ec2messages_endpoint_subnet_ids, sort([for s in aws_subnet.private : s.id]))
+  subnet_ids          = coalescelist(var.ec2messages_endpoint_subnet_ids, sort([for subnet in aws_subnet.private : subnet.id]))
   private_dns_enabled = var.ec2messages_endpoint_private_dns_enabled
   tags                = local.vpce_tags
   depends_on = [aws_subnet.private]

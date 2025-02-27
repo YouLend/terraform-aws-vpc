@@ -261,7 +261,7 @@ output "public_route_table_ids" {
 output "private_route_table_ids" {
   description = "List of IDs of private route tables"
   depends_on  = [aws_route_table.private] # Ensures this output waits for the route tables to be created
-  value       = [for rt in values(aws_route_table.private) : rt.id]
+  value       = [for route in values(aws_route_table.private) : route.id]
 }
 
 
@@ -274,11 +274,11 @@ output "redshift_route_table_ids" {
   description = "List of IDs of redshift route tables"
   value = (
     length(aws_route_table.redshift) > 0 
-    ? [for rt in aws_route_table.redshift : rt.id] 
+    ? [for route in aws_route_table.redshift : route.id] 
     : (
       var.enable_public_redshift 
-      ? [for rt in aws_route_table.public : rt.id] 
-      : [for rt in aws_route_table.private : rt.id]
+      ? [for route in aws_route_table.public : route.id] 
+      : [for route in aws_route_table.private : route.id]
     )
   )
 }
@@ -287,8 +287,8 @@ output "elasticache_route_table_ids" {
   description = "List of IDs of Elasticache route tables"
   value = (
     length(aws_route_table.elasticache) > 0 
-    ? [for rt in aws_route_table.elasticache : rt.id] 
-    : [for rt in aws_route_table.private : rt.id]
+    ? [for route in aws_route_table.elasticache : route.id] 
+    : [for route in aws_route_table.private : route.id]
   )
 }
 
