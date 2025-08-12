@@ -2985,3 +2985,20 @@ variable "create_egress_only_igw" {
   type        = bool
   default     = true
 }
+
+variable "eks_subnets" {
+  type        = map(map(any))
+  description = "Map of EKS subnets attributes. The key is the subnet name, and the value is a map with attributes like az, cidr_block, and tags."
+}
+
+variable "aws_region" {
+  description = "AWS region where the VPC will be created"
+  type        = string
+  default     = "eu-west-1"
+}
+
+variable "stage" {
+  description = "Stage of the environment, e.g. dev, staging, prod"
+  type        = string
+  default     = "dev"
+}

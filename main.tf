@@ -24,6 +24,26 @@ locals {
     var.tags,
     var.vpc_endpoint_tags,
   )
+
+  az_suffixes = ["a", "b"]
+
+  subnet_matrix = flatten([
+    for colour in ["blue", "green"] : [
+      for visibility in ["public", "private"] : [
+        for env_name, cidrs in var.eks_subnets[colour][visibility] : [
+          for idx, cidr in cidrs : {
+            name              = "${visibility}_eks_${colour}_${env_name}_${idx}"
+            cidr_block        = cidr
+            visibility        = visibility
+            colour            = colour
+            env_name          = env_name
+            index             = idx
+            availability_zone = "${var.aws_region}${local.az_suffixes[idx]}"
+          }
+        ]
+      ]
+    ]
+  ])
 }
 
 ######
@@ -427,6 +447,61 @@ resource "aws_subnet" "public" {
 # Public eks subnet
 #####################
 
+resource "aws_subnet" "eks" {
+  for_each = {
+    for s in local.subnet_matrix : s.name => s
+  }
+
+  vpc_id     = local.vpc_id
+  cidr_block = each.value.cidr_block
+
+  availability_zone = each.value.availability_zone
+
+  map_public_ip_on_launch = each.value.visibility == "public" ? var.map_public_ip_on_launch : false
+
+  assign_ipv6_address_on_creation = (
+    each.value.visibility == "public"
+    ? (
+      var.public_subnet_assign_ipv6_address_on_creation == null
+      ? var.assign_ipv6_address_on_creation
+      : var.public_subnet_assign_ipv6_address_on_creation
+    )
+    : (
+      var.private_subnet_assign_ipv6_address_on_creation == null
+      ? var.assign_ipv6_address_on_creation
+      : var.private_subnet_assign_ipv6_address_on_creation
+    )
+  )
+
+  ipv6_cidr_block = (
+    var.enable_ipv6 && each.value.visibility == "public" && length(var.public_subnet_ipv6_prefixes) > 0
+    ? cidrsubnet(
+      aws_vpc.this[0].ipv6_cidr_block,
+      8,
+      var.public_subnet_ipv6_prefixes[each.value.index]
+    )
+    : var.enable_ipv6 && each.value.visibility == "private" && length(var.private_subnet_ipv6_prefixes) > 0
+    ? cidrsubnet(
+      aws_vpc.this[0].ipv6_cidr_block,
+      8,
+      var.private_subnet_ipv6_prefixes[each.value.index]
+    )
+    : null
+  )
+
+  tags = merge(
+    {
+      Name                    = "${var.name}-${each.value.name}"
+      "Supported_Environment" = "${each.value.env_name}-${var.stage}-${each.value.visibility}-${each.value.colour}"
+    },
+    var.tags,
+    each.value.visibility == "public" && each.value.colour == "blue" ? var.public_eks_subnet_tags_blue :
+    each.value.visibility == "public" && each.value.colour == "green" ? var.public_eks_subnet_tags_green :
+    each.value.visibility == "private" && each.value.colour == "blue" ? var.private_eks_subnet_tags_blue :
+    var.private_eks_subnet_tags_green
+  )
+}
+#################
 
 resource "aws_subnet" "public_eks_blue" {
   count = var.create_vpc && length(var.public_eks_subnets_blue) > 0 && (false == var.one_nat_gateway_per_az || length(var.public_eks_subnets_blue) >= length(var.azs)) ? length(var.public_eks_subnets_blue) : 0
