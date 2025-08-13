@@ -85,22 +85,22 @@ output "private_subnets_cidr_blocks" {
 
 output "public_eks_subnets_cidr_blocks_blue" {
   description = "List of cidr_blocks of eks public subnets"
-  value       = aws_subnet.public_eks_blue[*].cidr_block
+  value       = [for k, s in aws_subnet.eks : s.cidr_block if startswith(k, "public_eks_blue")]
 }
 
 output "public_eks_subnets_cidr_blocks_green" {
   description = "List of cidr_blocks of eks public subnets"
-  value       = aws_subnet.public_eks_green[*].cidr_block
+  value       = [for k, s in aws_subnet.eks : s.cidr_block if startswith(k, "public_eks_green")]
 }
 
 output "public_eks_subnets_blue" {
   description = "List of IDs of eks public subnets"
-  value       = aws_subnet.public_eks_blue[*].id
+  value       = [for k, s in aws_subnet.eks : s.id if startswith(k, "public_eks_blue")]
 }
 
 output "public_eks_subnets_green" {
   description = "List of IDs of eks public subnets"
-  value       = aws_subnet.public_eks_green[*].id
+  value       = [for k, s in aws_subnet.eks : s.id if startswith(k, "public_eks_green")]
 }
 
 output "private_eks_subnets_cidr_blocks_blue" {
