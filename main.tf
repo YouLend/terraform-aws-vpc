@@ -230,7 +230,10 @@ resource "aws_default_route_table" "default" {
 # Publiс routes
 ################
 resource "aws_route_table" "public" {
-  count = var.create_vpc && length(var.public_subnets) > 0 || length(var.public_eks_subnets_blue) > 0 || length(var.public_eks_subnets_green) > 0 ? 1 : 0
+  count = var.create_vpc && length([
+    for subnet in local.subnet_matrix : subnet
+    if subnet.visibility == "public"
+  ]) > 0 ? 1 : 0
 
   vpc_id = local.vpc_id
 
@@ -501,6 +504,25 @@ resource "aws_subnet" "eks" {
     var.private_eks_subnet_tags_green
   )
 }
+
+resource "aws_route_table_association" "eks" {
+  for_each = {
+    for subnet in local.subnet_matrix :
+    subnet.name => subnet
+    if var.create_vpc
+  }
+
+  subnet_id = aws_subnet.eks[each.key].id
+
+  route_table_id = (
+    each.value.visibility == "public"
+    ? aws_route_table.public[0].id
+    : var.single_nat_gateway
+    ? aws_route_table.private[0].id
+    : aws_route_table.private[each.value.index].id
+  )
+}
+
 #################
 
 resource "aws_subnet" "public_eks_blue" {
